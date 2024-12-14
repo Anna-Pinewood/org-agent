@@ -8,4 +8,6 @@ dependencies = [
     "ipykernel>=6.29.5",
     "ipython>=8.30.0",
     "jupyter-core>=5.7.2",
+    "playwright>=1.49.0",
+    "rich>=13.9.4",
 ]

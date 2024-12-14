@@ -1,0 +1,22 @@
+llm:
+  active_provider: anthropic
+  
+  anthropic:
+    endpoint: https://api.anthropic.com/v1/messages
+    headers:
+      x-api-key: sk-ant-...
+      anthropic-version: "2023-06-01"
+    request_params:
+      model: claude-3-haiku-20241022
+      max_tokens: 1024
+      temperature: 0.1
+    response_path: [content, 0, text]
+
+  openai:
+    endpoint: https://api.openai.com/v1/chat/completions
+    headers:
+      Authorization: Bearer sk-...
+    request_params:
+      model: gpt-3.5-turbo
+      temperature: 0.1
+    response_path: [choices, 0, message, content]

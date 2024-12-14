@@ -11,3 +11,10 @@ wheels/
 
 # Notebooks
 notebooks/
+
+# creds
+*.yaml
+.env
+
+# docs
+docs/dev_knowledge/*
