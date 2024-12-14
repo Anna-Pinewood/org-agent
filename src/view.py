@@ -12,7 +12,7 @@ from rich import box
 logger = logging.getLogger(__name__)
 
 custom_theme = Theme({
-    "info": "cyan",
+    "info": "bright_cyan",  # Changed from "cyan" to "bright_cyan"
     "warning": "yellow",
     "error": "bold red",
     "success": "bold green",
@@ -28,9 +28,9 @@ class CLIView:
     def display_message(self, message: str):
         logger.debug(f"Displaying message: {message}")
         panel = Panel(
-            message,
+            Text(message),  # Wrap message in Text object
             box=box.ROUNDED,
-            style="info",
+            style="bright_cyan",  # Use direct color instead of theme
             border_style="bright_blue"
         )
         self.console.print(panel)

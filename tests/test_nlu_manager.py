@@ -11,10 +11,20 @@ def test_nlu_manager_initialization(nlu_manager):
     assert nlu_manager.config is not None
     assert nlu_manager.active_scenario is None
 
-@patch('src.view.CLIView')  # Fix patch path from org_agent.src.view.CLIView
-def test_process_command(mock_view, nlu_manager):
-    nlu_manager.process_command("test command")
-    mock_view.assert_called()
+@patch('src.nlu_manager.CLIView')  # Change patch target to where CLIView is imported
+def test_process_command(mock_view_class, nlu_manager):
+    # Create mock view instance
+    mock_view = Mock()
+    mock_view_class.return_value = mock_view
+    
+    # Create new NLUManager instance with mocked view
+    test_manager = NLUManager(config=nlu_manager.config)
+    
+    # Test the process_command
+    test_manager.process_command("test command")
+    
+    # Verify display_message was called
+    mock_view.display_message.assert_called_once_with("Received command: test command")
 
 def test_command_exit(nlu_manager):
     with patch.object(nlu_manager.view, 'get_input', return_value='exit'):
