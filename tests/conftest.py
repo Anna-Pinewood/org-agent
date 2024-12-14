@@ -1,12 +1,12 @@
 import pytest
 import tempfile
-import yaml
 from rich.console import Console
+from omegaconf import OmegaConf
 import io
 
 @pytest.fixture(scope="function")
 def mock_config():
-    return {
+    return OmegaConf.create({
         'redis': {
             'host': 'localhost',
             'port': 6379,
@@ -15,12 +15,12 @@ def mock_config():
         'logging': {
             'level': 'INFO'
         }
-    }
+    })
 
 @pytest.fixture(scope="function")
 def temp_config_file(mock_config):
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml') as temp:
-        yaml.dump(mock_config, temp)
+        OmegaConf.save(mock_config, temp.name)
         temp.flush()
         yield temp.name
 
