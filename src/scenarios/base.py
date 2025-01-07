@@ -1,11 +1,18 @@
 from abc import ABC, abstractmethod
 import logging
 
+from llm_interface import LLMInterface
+
 logger = logging.getLogger(__name__)
 
 
 class BaseScenario(ABC):
     """Base class for all scenarios"""
+
+    def __init__(self, llm_brain: LLMInterface | None = None):
+        if llm_brain is None:
+            llm_brain = LLMInterface()
+        self.llm_brain = llm_brain
 
     @abstractmethod
     def classify_intent(self, command: str) -> float:
