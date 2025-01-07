@@ -72,7 +72,7 @@ Each scenario (booking, moderator management, etc.) inherits from a base scenari
 ```python
 class BaseScenario:
     def __init__(self):
-        self.llm_brain = LLMBrain()
+        self.llm_brain = ...
         self.state = ScenarioState()
         self.state_history = []
         self.tools = ScenarioToolbox()

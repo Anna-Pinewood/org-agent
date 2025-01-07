@@ -1,6 +1,6 @@
 import pytest
-from scenarios.booking import BookingScenario
-from planner import ProxyPlanner
+from src.scenarios.booking import BookingScenario
+from src.planner import ProxyPlanner
 
 
 class TestBookingScenario:
