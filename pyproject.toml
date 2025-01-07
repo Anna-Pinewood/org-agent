@@ -13,6 +13,7 @@ dependencies = [
     "rich>=13.9.4",
     "omegaconf>=2.3.0",
     "pytest-mock>=3.14.0",
+    "litellm>=1.57.1",
 ]
 
 [dependency-groups]

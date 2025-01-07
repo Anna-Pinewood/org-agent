@@ -6,6 +6,7 @@ from omegaconf import OmegaConf
 logger = logging.getLogger(__name__)
 project_path = Path(__file__).resolve().parents[1]
 
+
 def load_config():
     try:
         config_path = os.getenv('CONFIG_PATH', project_path / 'config.yaml')
@@ -16,5 +17,6 @@ def load_config():
         logger.error(f"Failed to load config: {e}")
         raise
 
-# Load config once when module is imported  
-config = load_config()
+
+# Load config once when module is imported
+CONFIG = load_config()
