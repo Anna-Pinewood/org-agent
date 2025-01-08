@@ -119,4 +119,5 @@ class BookingScenario(BaseScenario):
         """
         self._log_execution(command)
         # TODO: Implement booking execution logic
+        parsed_params = self.parse_command(command)
         raise NotImplementedError("Booking execution not yet implemented")

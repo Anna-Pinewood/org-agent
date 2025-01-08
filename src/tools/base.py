@@ -22,6 +22,8 @@ class ToolBox:
         self._tools: Dict[str, Tool] = {}
 
     def register_tool(self, name: str, tool: Tool):
+        if not isinstance(tool, Tool):
+            raise ValueError("Tool must be a subclass of Tool")
         self._tools[name] = tool
 
     def get_tool(self, name: str) -> Tool:
