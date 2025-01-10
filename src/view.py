@@ -141,7 +141,6 @@ class CLIView:
 
     # Rest of your existing CLIView methods remain the same
     def display_message(self, message: str):
-        logger.debug("Displaying message: %s", message)
         panel = Panel(
             Text(message),
             box=box.ROUNDED,
@@ -163,7 +162,7 @@ class CLIView:
     def get_input(self, prompt: str = "Enter command") -> str:
         styled_prompt = f"[prompt]❯[/prompt] [highlight]{prompt}[/highlight]"
         user_input = Prompt.ask(styled_prompt)
-        logger.debug("User input received: %s", user_input)
+        logger.info("User input received: %s", user_input)
         return user_input
 
     def start_progress(self, message: str = "Thinking"):

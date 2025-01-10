@@ -22,7 +22,7 @@ class BrowserManager:
     async def ensure_browser(self):
         """Ensure browser, context and page are initialized"""
         if not self._browser:
-            logger.debug("Starting new browser instance")
+            logger.info("Starting new browser instance")
             playwright = await async_playwright().start()
             self._browser = await playwright.chromium.launch(
                 headless=True,

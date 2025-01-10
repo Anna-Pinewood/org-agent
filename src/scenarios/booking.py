@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field, field_validator
 from scenarios.base import BaseScenario
 import logging
 from config import CONFIG
+from src.tools.browser.application import BookAppButton, SelectBuildingTool
+from src.tools.browser.manager import BrowserManager
 from tools.browser import BookingPageTool, LoginTool
 from tools.date import CurrentDateTool, next_thursday
 from llm_interface import LLMInterface
@@ -75,9 +77,15 @@ class BookingScenario(BaseScenario):
     """Scenario for handling room booking requests with authentication support"""
 
     def __init__(self, llm_brain: LLMInterface | None = None):
-        """Initialize booking scenario"""
+        """Initialize booking scenario with browser management"""
         super().__init__(llm_brain)
         self.current_date = CurrentDateTool().execute()
+        self.browser_manager = BrowserManager()
+
+    async def initialize(self) -> None:
+        """Initialize browser and ensure it's ready for use"""
+        logger.info("Initializing browser for booking scenario")
+        await self.browser_manager.ensure_browser()
 
     async def authenticate(self) -> bool:
         """
@@ -130,7 +138,7 @@ class BookingScenario(BaseScenario):
                 logger.info("Booking intent detected with stem '%s'", stem)
                 return 1.0
 
-        logger.debug("No booking intent detected")
+        logger.info("No booking intent detected")
         return 0.0
 
     def parse_command(self, command: str, **kwargs) -> BookingParams:
@@ -164,22 +172,46 @@ class BookingScenario(BaseScenario):
 
         Args:
             command: User's natural language command
-
-        Raises:
-            NotImplementedError: When booking execution is not yet implemented
         """
-        self._log_execution(command)
+        try:
+            self._log_execution(command)
 
-        # Authenticate first
-        if not await self.authenticate():
-            logger.error("Authentication failed, cannot proceed with booking")
-            return
+            # Initialize browser first
+            await self.initialize()
 
-        # Parse booking parameters
-        parsed_params = self.parse_command(command)
+            # Authenticate first
+            if not await self.authenticate():
+                logger.error(
+                    "Authentication failed, cannot proceed with booking")
+                return
 
-        # TODO: Implement booking execution logic
-        # raise NotImplementedError("Booking execution not yet implemented")
+            # Parse booking parameters
+            parsed_params = self.parse_command(command)
+
+            # Navigate to booking application form
+            button_result = await BookAppButton().execute()
+            if not button_result['success']:
+                logger.error("Failed to navigate to booking form: %s",
+                             button_result.get('error'))
+                return
+
+            # Select the building if specified
+
+            applucation_url = button_result['current_url']
+            select_result = await SelectBuildingTool().execute(
+                building=parsed_params.building, application_url=applucation_url)
+            if not select_result['success']:
+                logger.error("Failed to select building: %s",
+                             select_result.get('error'))
+                return
+
+            # TODO: Continue with remaining booking steps
+            raise NotImplementedError(
+                "Remaining booking steps not yet implemented")
+
+        except Exception as e:
+            logger.error("Booking execution failed: %s", str(e))
+            raise
 
     def _log_execution(self, command: str) -> None:
         """Log the execution of the booking scenario"""

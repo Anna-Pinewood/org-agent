@@ -36,30 +36,26 @@ class LoginTool(BrowserTool):
         try:
             page = await self._get_page()
 
-            logger.debug("Navigating to %s", login_url)
+            logger.info("Navigating to %s", login_url)
             await page.goto(login_url, timeout=timeout)
 
-            logger.debug("Waiting for login form")
+            logger.info("Waiting for login form")
             await page.wait_for_selector('#username', timeout=timeout)
             await page.fill('#username', username)
             await page.fill('#password', password)
 
-            logger.debug("Clicking login button")
+            logger.info("Clicking login button")
             async with page.expect_navigation(timeout=timeout):
                 await page.click('#kc-login', timeout=timeout)
 
-            logger.debug("Verifying login success")
+            logger.info("Verifying login success")
             success = await self._verify_login(page)
 
             current_url = page.url
-            logger.debug("Current URL after login: %s", current_url)
-
-            # Debug session information
-            # cookies = await page.context.cookies()
-            # logger.debug("Cookies after login: %s", cookies)
+            logger.info("Current URL after login: %s", current_url)
 
             storage = await page.evaluate("() => Object.entries(localStorage)")
-            logger.debug("Local storage: %s", storage)
+            logger.info("Local storage: %s", storage)
 
             return {
                 'success': success,
@@ -89,7 +85,7 @@ class LoginTool(BrowserTool):
 
             success = any([navbar_exists, menu_exists, text_found])
 
-            logger.debug(
+            logger.info(
                 "Login verification results: \n"
                 "- Navbar found: %s\n"
                 "- Menu found: %s\n"
@@ -112,7 +108,7 @@ class BookingPageTool(BrowserTool):
 
     async def execute(
         self,
-        booking_url: str = isu_booking_creds.booking_address,
+        booking_url: str = isu_booking_creds.booking_url,
         timeout: int = isu_booking_creds.page_interaction_timeout
     ) -> Dict:
         """
@@ -131,7 +127,7 @@ class BookingPageTool(BrowserTool):
         try:
             page = await self._get_page()
 
-            logger.debug("Navigating to booking page: %s", booking_url)
+            logger.info("Navigating to booking page: %s", booking_url)
             await page.goto(booking_url, timeout=timeout)
 
             # Check for login page indicators
@@ -148,16 +144,12 @@ class BookingPageTool(BrowserTool):
             is_logged_in = any(
                 indicator in content for indicator in logged_in_indicators)
 
-            logger.debug(
-                "Page status check - needs login: %s, is logged in: %s",
+            logger.info(
+                "Page status check - needs login? %s, is logged in? %s",
                 needs_login, is_logged_in
             )
 
             current_url = page.url
-
-            # Debug session information
-            # cookies = await page.context.cookies()
-            # logger.debug("Cookies for booking page: %s", cookies)
 
             if needs_login:
                 return {

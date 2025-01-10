@@ -15,10 +15,11 @@ class NLUManager:
     Natural Language Understanding Manager that coordinates processing of user commands
     and manages scenarios execution
     """
+
     def __init__(self, config):
         """
         Initialize NLU Manager with configuration and required components
-        
+
         Args:
             config: Application configuration object
         """
@@ -37,10 +38,10 @@ class NLUManager:
     def _init_redis(self, config) -> redis.Redis:
         """
         Initialize Redis connection
-        
+
         Args:
             config: Redis configuration dictionary
-            
+
         Returns:
             redis.Redis: Configured Redis client
         """
@@ -50,7 +51,7 @@ class NLUManager:
     async def process_command(self, command: str) -> None:
         """
         Process a user command by selecting and executing appropriate scenario
-        
+
         Args:
             command: User's natural language command
         """
@@ -102,7 +103,7 @@ def main():
     """Entry point for the application"""
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(name)s - %(levelname)s - %(message)s'
+        format='[%(levelname)s] %(name)s - %(message)s'
     )
     manager = NLUManager(config=CONFIG)
     asyncio.run(manager.run())
