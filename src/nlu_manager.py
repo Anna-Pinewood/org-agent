@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from typing import Optional
 import redis
 from planner import ProxyPlanner
@@ -10,26 +11,50 @@ logger = logging.getLogger(__name__)
 
 
 class NLUManager:
+    """
+    Natural Language Understanding Manager that coordinates processing of user commands
+    and manages scenarios execution
+    """
     def __init__(self, config):
+        """
+        Initialize NLU Manager with configuration and required components
+        
+        Args:
+            config: Application configuration object
+        """
         self.view = CLIView()
         self.config = config
         self.proxy_planner = ProxyPlanner()
         self._register_scenarios()
-        # self.redis_client = self._init_redis()
         self.active_scenario = None
 
-    def _register_scenarios(self):
+    def _register_scenarios(self) -> None:
         """Register all available scenarios with the proxy planner"""
-        # Register booking scenario as per example in sprint_1.md
+        logger.debug("Registering scenarios")
         self.proxy_planner.register_scenario(BookingScenario())
         # Add other scenarios here as they become available
 
     def _init_redis(self, config) -> redis.Redis:
+        """
+        Initialize Redis connection
+        
+        Args:
+            config: Redis configuration dictionary
+            
+        Returns:
+            redis.Redis: Configured Redis client
+        """
         redis_config = config.get('redis', {})
         return redis.Redis(**redis_config)
 
-    def process_command(self, command: str):
-        logger.info(f"Processing command: {command}")
+    async def process_command(self, command: str) -> None:
+        """
+        Process a user command by selecting and executing appropriate scenario
+        
+        Args:
+            command: User's natural language command
+        """
+        logger.info("Processing command: %s", command)
         self.view.display_message(f"Received command: {command}")
         self.view.start_progress()
 
@@ -39,24 +64,20 @@ class NLUManager:
 
             if score > 0:
                 self.active_scenario = scenario
-                # Execute the command with selected scenario
-                self.active_scenario.execute(command)
+                # Execute the command with selected scenario - now properly awaited
+                await self.active_scenario.execute(command)
             else:
                 self.view.display_message(
                     "I'm not sure how to handle that command")
 
         except Exception as e:
-            logger.error(f"Error processing command: {e}")
+            logger.error("Error processing command: %s", str(e))
             self.view.display_error(str(e))
         finally:
             self.view.stop_progress()
 
-    def listen_for_messages(self):
-        """Listen for messages from active scenarios"""
-        # TODO: Implement Redis pub/sub listening
-        pass
-
-    def run(self):
+    async def run(self) -> None:
+        """Main loop that processes user input until exit command is received"""
         logger.info("Starting NLU Manager")
         self.view.display_message("Welcome to the Organization Agent")
 
@@ -65,22 +86,27 @@ class NLUManager:
                 command = self.view.get_input()
                 if command.lower() in ['exit', 'quit']:
                     break
-                self.process_command(command)
+                await self.process_command(command)
             except KeyboardInterrupt:
                 logger.info("Received shutdown signal")
                 break
             except Exception as e:
-                logger.error(f"Unexpected error: {e}")
+                logger.error("Unexpected error: %s", str(e))
                 self.view.display_error("An unexpected error occurred")
 
         self.view.display_message("Shutting down...")
         logger.info("NLU Manager stopped")
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the application"""
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.DEBUG,
+        format='%(name)s - %(levelname)s - %(message)s'
     )
     manager = NLUManager(config=CONFIG)
-    manager.run()
+    asyncio.run(manager.run())
+
+
+if __name__ == "__main__":
+    main()
