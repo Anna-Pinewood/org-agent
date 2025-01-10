@@ -2,7 +2,8 @@ from datetime import datetime, time
 from pydantic import BaseModel, Field, field_validator
 from scenarios.base import BaseScenario
 import logging
-from src.config import CONFIG
+from config import CONFIG
+from tools.browser import BookingPageTool, LoginTool
 from tools.date import CurrentDateTool, next_thursday
 from llm_interface import LLMInterface
 from pydantic.functional_validators import BeforeValidator
@@ -71,17 +72,53 @@ Example output:
 
 
 class BookingScenario(BaseScenario):
-    """Scenario for handling room booking requests"""
+    """Scenario for handling room booking requests with authentication support"""
 
     def __init__(self, llm_brain: LLMInterface | None = None):
+        """Initialize booking scenario"""
         super().__init__(llm_brain)
         self.current_date = CurrentDateTool().execute()
+
+    async def authenticate(self) -> bool:
+        """
+        Check authentication status and login if necessary
+
+        Returns:
+            bool: True if authenticated (either already or after login), False otherwise
+        """
+        try:
+            # Check current auth status
+            status = await BookingPageTool().execute()
+
+            if status.get('status') == 'logged_in':
+                logger.info("User already authenticated")
+                return True
+
+            if status.get('status') == 'login_required':
+                logger.info("Login required, attempting authentication")
+                login_result = await LoginTool().execute()
+
+                if login_result.get('success'):
+                    logger.info("Login successful")
+                    return True
+
+                logger.error("Login failed: %s", login_result.get('error'))
+                return False
+
+            logger.error("Unexpected auth status: %s", status.get('status'))
+            return False
+
+        except Exception as e:
+            logger.error("Authentication process failed: %s", str(e))
+            return False
 
     def classify_intent(self, command: str) -> float:
         """
         Check if command contains booking-related words (with root 'брон')
+
         Args:
             command: User's natural language command
+
         Returns:
             float: 1.0 if booking-related, 0.0 otherwise
         """
@@ -90,34 +127,60 @@ class BookingScenario(BaseScenario):
 
         for stem in booking_stems:
             if stem in command:
-                logger.info(f"Booking intent detected with stem '{stem}'")
+                logger.info("Booking intent detected with stem '%s'", stem)
                 return 1.0
 
         logger.debug("No booking intent detected")
         return 0.0
 
     def parse_command(self, command: str, **kwargs) -> BookingParams:
+        """
+        Parse natural language booking command into structured parameters
+
+        Args:
+            command: User's natural language command
+            **kwargs: Additional parameters for LLM interface
+
+        Returns:
+            BookingParams: Structured booking parameters
+        """
         response = self.llm_brain.send_request(
             prompt=PARSE_BOOKING_PROMPT,
             call_params={"user_command": command,
                          "current_date": self.current_date["readable"]},
             response_format={"type": "json_object"},
-            ** kwargs
+            **kwargs
         )
         parsed = self.llm_brain.get_response_content(response)
-        logger.info(f"Booking command parsed:\n{parsed}")
+        logger.info("Booking command parsed: %s", parsed)
         result_clean = {key: value for key,
                         value in parsed.items() if value is not None}
 
         return BookingParams(**result_clean)
 
-    def execute(self, command: str) -> None:
+    async def execute(self, command: str) -> None:
         """
-        Execute the booking scenario
+        Execute the booking scenario with authentication
+
         Args:
             command: User's natural language command
+
+        Raises:
+            NotImplementedError: When booking execution is not yet implemented
         """
         self._log_execution(command)
-        # TODO: Implement booking execution logic
+
+        # Authenticate first
+        if not await self.authenticate():
+            logger.error("Authentication failed, cannot proceed with booking")
+            return
+
+        # Parse booking parameters
         parsed_params = self.parse_command(command)
-        raise NotImplementedError("Booking execution not yet implemented")
+
+        # TODO: Implement booking execution logic
+        # raise NotImplementedError("Booking execution not yet implemented")
+
+    def _log_execution(self, command: str) -> None:
+        """Log the execution of the booking scenario"""
+        logger.info("Executing booking scenario with command: %s", command)

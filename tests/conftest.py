@@ -3,6 +3,8 @@ import tempfile
 from rich.console import Console
 from omegaconf import OmegaConf
 import io
+import logging
+
 
 @pytest.fixture(scope="function")
 def mock_config():
@@ -17,6 +19,7 @@ def mock_config():
         }
     })
 
+
 @pytest.fixture(scope="function")
 def temp_config_file(mock_config):
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml') as temp:
@@ -24,8 +27,17 @@ def temp_config_file(mock_config):
         temp.flush()
         yield temp.name
 
+
 @pytest.fixture(scope="function")
 def mock_console():
     output = io.StringIO()
     console = Console(file=output, force_terminal=True)
     return console, output
+
+
+@pytest.fixture(autouse=True)
+def setup_logging():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
