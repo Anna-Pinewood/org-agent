@@ -3,8 +3,6 @@ from pydantic import BaseModel, Field, model_validator
 from scenarios.base import BaseScenario
 import logging
 from config import CONFIG
-from src.tools.browser.application import BookAppButton, SelectBuildingTool
-from src.tools.browser.manager import BrowserManager
 from tools.browser import BookingPageTool, LoginTool
 from tools.date import CurrentDateTool, next_thursday
 from llm_interface import LLMInterface

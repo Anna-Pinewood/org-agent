@@ -63,3 +63,13 @@ class ToolResponse(BaseModel):
                     transformed_meta[key] = value
             data["meta"] = transformed_meta
         super().__init__(**data)
+
+
+class ToolExecutionRecord:
+    """Record of a single tool execution within a step"""
+    timestamp: datetime
+    tool_name: str
+    tool_params: Dict
+    response: ToolResponse
+    # Brief browser state captured only on error
+    browser_state: dict | None = None
