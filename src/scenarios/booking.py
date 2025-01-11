@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
 from scenarios.base import BaseScenario
 import logging
 from config import CONFIG
@@ -42,6 +42,7 @@ class BookingParams(BaseModel):
     building: str = Field(
         description="Building name if specified",
         default=default_booking_params.building)
+
 
 
 PARSE_BOOKING_PROMPT = """Parse the booking command and extract parameters.

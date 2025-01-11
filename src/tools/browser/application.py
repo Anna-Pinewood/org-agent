@@ -103,7 +103,8 @@ class SelectBuildingTool(BrowserTool):
 
     async def _verify_select(
             self, page: Page,
-            expected_building: str, timeout: int) -> Dict:
+            expected_building: str,
+            timeout: int) -> Dict:
         """
         Verify that the correct building was selected by checking the select2-chosen span
 

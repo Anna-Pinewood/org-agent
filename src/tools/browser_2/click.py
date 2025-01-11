@@ -81,8 +81,8 @@ class ClickTool(BrowserTool):
                     logger.info(msg)
                     await env.page.get_by_role("button", name=text).click(timeout=timeout)
 
-            meta["new_url"] = env.page.url
-            msg = f"Click successful on {meta['target']}. New URL: {meta['new_url']}"
+            meta["url_after_click"] = env.page.url
+            msg = f"Click successful on {meta['target']}. URL after click: {meta['url_after_click']}"
             meta["narrative"].append(msg)
             logger.info(msg)
 
