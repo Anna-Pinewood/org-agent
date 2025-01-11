@@ -1,8 +1,9 @@
 import logging
 from typing import Optional
 from src.config import CONFIG
-from src.tools.browser_2.base import BrowserTool, BrowserToolResponse
-from src.tools.browser_2.environment import BrowserEnvironment
+from src.tools.base import ToolResponse
+from src.tools.browser.base import BrowserTool
+from src.tools.browser.environment import BrowserEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class ClickTool(BrowserTool):
         text: Optional[str] = None,
         timeout: int = TIMEOUT,
         wait_for_navigation: bool = True,
-    ) -> BrowserToolResponse:
+    ) -> ToolResponse:
         """Click element and optionally wait for navigation
 
         Parameters
@@ -45,7 +46,7 @@ class ClickTool(BrowserTool):
             msg = "Must provide either selector or text"
             meta["narrative"].append(msg)
             logger.error(msg)
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=False,
                 error=msg,
                 meta=meta
@@ -86,7 +87,7 @@ class ClickTool(BrowserTool):
             meta["narrative"].append(msg)
             logger.info(msg)
 
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=True,
                 meta=meta
             )
@@ -97,7 +98,7 @@ class ClickTool(BrowserTool):
             meta["narrative"].append(error_msg)
             meta["narrative"].append(f"Page content:\n{page_content}")
             logger.error(error_msg)
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=False,
                 error=error_msg,
                 meta=meta
@@ -122,7 +123,7 @@ class FillTool(BrowserTool):
         selector: str,
         value: str,
         timeout: int = TIMEOUT
-    ) -> BrowserToolResponse:
+    ) -> ToolResponse:
         """Fill input field with value
 
         Parameters
@@ -154,7 +155,7 @@ class FillTool(BrowserTool):
             meta["narrative"].append(msg)
             logger.info(msg)
 
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=True,
                 meta=meta
             )
@@ -166,7 +167,7 @@ class FillTool(BrowserTool):
             meta["narrative"].append(f"Page content:\n{page_content}")
             logger.error(error_msg)
 
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=False,
                 error=error_msg,
                 meta=meta
@@ -188,7 +189,7 @@ class CheckContentTool(BrowserTool):
         env: BrowserEnvironment,
         texts: list[str],
         timeout: int = TIMEOUT
-    ) -> BrowserToolResponse:
+    ) -> ToolResponse:
         """Check if texts are present in page content
 
         Parameters
@@ -229,7 +230,7 @@ class CheckContentTool(BrowserTool):
                 meta["narrative"].append(msg)
                 logger.info(msg)
 
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=len(missing_texts) == 0,
                 error=f"Missing expected texts: {missing_texts}" if missing_texts else None,
                 meta=meta
@@ -239,11 +240,12 @@ class CheckContentTool(BrowserTool):
             error_msg = f"Content check failed: {str(e)}"
             meta["narrative"].append(error_msg)
             logger.error(error_msg)
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=False,
                 error=error_msg,
                 meta=meta
             )
+
     def description(self):
         return """Playwright tool. Check if texts exist in page content.
         Parameters:

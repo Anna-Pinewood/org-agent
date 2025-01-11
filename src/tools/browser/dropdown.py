@@ -1,8 +1,9 @@
 import logging
 from typing import Optional
 from src.config import CONFIG
-from src.tools.browser_2.base import BrowserTool, BrowserToolResponse
-from src.tools.browser_2.environment import BrowserEnvironment
+from src.tools.base import ToolResponse
+from src.tools.browser.base import BrowserTool
+from src.tools.browser.environment import BrowserEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class DropDownTool(BrowserTool):
         dropdown_selector: str = None,
         dropdown_text: str = None,
         timeout: int = TIMEOUT,
-    ) -> BrowserToolResponse:
+    ) -> ToolResponse:
         """Select an option from a dropdown menu
 
         Parameters
@@ -49,7 +50,7 @@ class DropDownTool(BrowserTool):
             msg = "Must provide either dropdown_selector or dropdown_text"
             meta["narrative"].append(msg)
             logger.error(msg)
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=False,
                 error=msg,
                 meta=meta
@@ -78,7 +79,7 @@ class DropDownTool(BrowserTool):
             meta["narrative"].append(msg)
             logger.info(msg)
 
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=True,
                 meta=meta
             )
@@ -89,7 +90,7 @@ class DropDownTool(BrowserTool):
             meta["narrative"].append(error_msg)
             meta["narrative"].append(f"Page content:\n{page_content}")
             logger.error(error_msg)
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=False,
                 error=error_msg,
                 meta=meta
@@ -116,7 +117,7 @@ class DropdownOptionsTool(BrowserTool):
         dropdown_selector: str = None,
         dropdown_text: str = None,
         timeout: int = TIMEOUT,
-    ) -> BrowserToolResponse:
+    ) -> ToolResponse:
         """Get all options from a dropdown menu and restore dropdown state
 
         Parameters
@@ -141,7 +142,7 @@ class DropdownOptionsTool(BrowserTool):
             msg = "Must provide either dropdown_selector or dropdown_text"
             meta["narrative"].append(msg)
             logger.error(msg)
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=False,
                 error=msg,
                 meta=meta
@@ -177,7 +178,7 @@ class DropdownOptionsTool(BrowserTool):
             meta["narrative"].append(msg)
             logger.info(msg)
 
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=True,
                 data=options,
                 meta=meta
@@ -189,7 +190,7 @@ class DropdownOptionsTool(BrowserTool):
             meta["narrative"].append(error_msg)
             meta["narrative"].append(f"Page content:\n{page_content}")
             logger.error(error_msg)
-            return BrowserToolResponse(
+            return ToolResponse(
                 success=False,
                 error=error_msg,
                 meta=meta

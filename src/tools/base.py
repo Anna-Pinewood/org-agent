@@ -3,6 +3,8 @@ from datetime import datetime
 import logging
 from typing import Any, Dict
 
+from pydantic import BaseModel, Field
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,3 +33,33 @@ class ToolBox:
 
     def get_tools_description(self) -> Dict[str, str]:
         return {name: tool.description() for name, tool in self._tools.items()}
+
+
+class ToolResponse(BaseModel):
+    """
+    Standardized response format for browser tools
+    """
+    success: bool = Field(
+        default=False,
+        description="Indicates if the tool operation was successful"
+    )
+    error: str | None = Field(
+        default=None,
+        description="Error message if operation failed"
+    )
+    meta: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Dict with execution metadata for LLM reasoning"
+    )
+
+    def __init__(__pydantic_self__, **data):
+        # Preprocess the 'meta' field to convert lists into strings
+        if "meta" in data:
+            transformed_meta = {}
+            for key, value in data["meta"].items():
+                if isinstance(value, list):
+                    transformed_meta[key] = ";\n".join(map(str, value))
+                else:
+                    transformed_meta[key] = value
+            data["meta"] = transformed_meta
+        super().__init__(**data)
