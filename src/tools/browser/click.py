@@ -251,3 +251,60 @@ class CheckContentTool(BrowserTool):
         Parameters:
         texts: List[str] - List of text strings to look for in the page content
         """
+
+class NavigateTool(BrowserTool):
+    """Tool for navigating to a URL"""
+
+    async def execute(
+        self,
+        env: BrowserEnvironment,
+        url: str,
+        timeout: int = TIMEOUT
+    ) -> ToolResponse:
+        """Navigate to URL
+
+        Parameters
+        ----------
+        env : BrowserEnvironment
+        url : str
+            URL to navigate to
+        timeout : int, optional
+            Maximum wait time in ms
+        """
+        meta = {
+            "action": "navigate",
+            "url": url,
+            "narrative": []
+        }
+
+        try:
+            msg = f"Attempting to navigate to {url}"
+            meta["narrative"].append(msg)
+            logger.info(msg)
+
+            await env.page.goto(url, timeout=timeout)
+
+            msg = f"Navigation successful to {url}"
+            meta["narrative"].append(msg)
+            logger.info(msg)
+
+            return ToolResponse(
+                success=True,
+                meta=meta
+            )
+
+        except Exception as e:
+            error_msg = f"Navigation failed to {url}: {str(e)}"
+            meta["narrative"].append(error_msg)
+            logger.error(error_msg)
+            return ToolResponse(
+                success=False,
+                error=error_msg,
+                meta=meta
+            )
+
+    def description(self):
+        return """Playwright tool. Navigate to URL.
+        Parameters:
+        url: str - URL to navigate to
+        """

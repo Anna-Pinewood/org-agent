@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 import logging
 from typing import Any, Dict
@@ -65,6 +66,7 @@ class ToolResponse(BaseModel):
         super().__init__(**data)
 
 
+@dataclass
 class ToolExecutionRecord:
     """Record of a single tool execution within a step"""
     timestamp: datetime

@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 import logging
+from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 from config import CONFIG
 
@@ -57,3 +58,13 @@ class BrowserEnvironment:
         """Navigate to URL and update current_url"""
         await self.page.goto(url, timeout=timeout)
         self._current_url = self.page.url
+
+    async def describe_state(self) -> str:
+        """Get concise description of browser state"""
+        page_content = await self.page.content()
+        soup = BeautifulSoup(page_content, 'html.parser')
+        headers = []
+        for header_tag in ['h1', 'h2', 'h3', 'h4']:
+            for header in soup.find_all(header_tag):
+                headers.append(header.get_text(strip=True))
+        return "\n".join(headers)
