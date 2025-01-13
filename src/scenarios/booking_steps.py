@@ -14,6 +14,13 @@ class LoginStep(ScenarioStep):
         super().__init__()
         self.status = StepStatus.NOT_STARTED
         self._success_texts = ["Личный кабинет", "Центр приложений"]
+        self._register_tools()
+
+    def _register_tools(self):
+        self.toolbox.register_tool("NavigateTool", NavigateTool())
+        self.toolbox.register_tool("CheckContentTool", CheckContentTool())
+        self.toolbox.register_tool("FillTool", FillTool())
+        self.toolbox.register_tool("ClickTool", ClickTool())
 
     async def execute(self, browser_env: BrowserEnvironment) -> bool:
         """
@@ -50,7 +57,7 @@ class LoginStep(ScenarioStep):
                     meta={"action": "navigate",
                           "url": CONFIG.isu_booking_creds.booking_login}
                 ),
-                browser_env=browser_env,
+                environment=browser_env,
                 header_summary=msg
             )
 
@@ -74,7 +81,7 @@ class LoginStep(ScenarioStep):
                     "value": "[REDACTED]"
                 },
                 response=username_result,
-                browser_env=browser_env,
+                environment=browser_env,
                 header_summary=msg
             )
             if not username_result.success:
@@ -88,8 +95,7 @@ class LoginStep(ScenarioStep):
             password_result = await FillTool().execute(
                 env=browser_env,
                 selector="#password",
-                # value=CONFIG.isu_booking_creds.password
-                value="wrong"
+                value=CONFIG.isu_booking_creds.password
             )
             await self._record_tool_execution(
                 tool_name="FillTool",
@@ -98,7 +104,7 @@ class LoginStep(ScenarioStep):
                     "value": "[REDACTED]"
                 },
                 response=password_result,
-                browser_env=browser_env,
+                environment=browser_env,
                 header_summary=msg
             )
             if not password_result.success:
@@ -117,7 +123,7 @@ class LoginStep(ScenarioStep):
                 tool_name="ClickTool",
                 params={"text": "Вход"},
                 response=click_result,
-                browser_env=browser_env,
+                environment=browser_env,
                 # header_summary=msg
             )
             if not click_result.success:
@@ -126,14 +132,16 @@ class LoginStep(ScenarioStep):
                 return False
 
             # Verify successful login
-            return await self.verify_success(browser_env)
+            return await self.verify_success(environment=browser_env)
 
         except Exception as e:
             logger.error("Login step failed with unexpected error: %s", str(e))
             self.status = StepStatus.FAILED
             return False
 
-    async def verify_success(self, browser_env: BrowserEnvironment) -> bool:
+    async def verify_success(
+            self,
+            environment: BrowserEnvironment) -> bool:
         """
         Verify successful login by checking for expected page elements
 
@@ -143,11 +151,11 @@ class LoginStep(ScenarioStep):
         Returns:
             bool: True if login successful, False otherwise
         """
-        msg = "Verifying login success"
+        msg = "Verifying login success..."
         logger.info(msg)
 
         verify_result = await CheckContentTool().execute(
-            env=browser_env,
+            env=environment,
             texts=self._success_texts
         )
 
@@ -155,7 +163,7 @@ class LoginStep(ScenarioStep):
             tool_name="CheckContentTool",
             params={"texts": self._success_texts},
             response=verify_result,
-            browser_env=browser_env,
+            environment=environment,
             header_summary=msg
         )
 

@@ -26,7 +26,9 @@ class ToolBox:
 
     def register_tool(self, name: str, tool: Tool):
         if not isinstance(tool, Tool):
-            raise ValueError("Tool must be a subclass of Tool")
+
+            raise ValueError(
+                f"Tool must be a subclass of Tool, got {type(tool)}")
         self._tools[name] = tool
 
     def get_tool(self, name: str) -> Tool:
@@ -34,6 +36,9 @@ class ToolBox:
 
     def get_tools_description(self) -> Dict[str, str]:
         return {name: tool.description() for name, tool in self._tools.items()}
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._tools
 
 
 class ToolResponse(BaseModel):
@@ -53,18 +58,6 @@ class ToolResponse(BaseModel):
         description="Dict with execution metadata for LLM reasoning"
     )
 
-    # def __init__(__pydantic_self__, **data):
-    #     # Preprocess the 'meta' field to convert lists into strings
-    #     if "meta" in data:
-    #         transformed_meta = {}
-    #         for key, value in data["meta"].items():
-    #             if isinstance(value, list):
-    #                 transformed_meta[key] = ";\n".join(map(str, value))
-    #             else:
-    #                 transformed_meta[key] = value
-    #         data["meta"] = transformed_meta
-    #     super().__init__(**data)
-
 
 @dataclass
 class ToolExecutionRecord:
@@ -74,7 +67,7 @@ class ToolExecutionRecord:
     tool_params: Dict
     response: ToolResponse
     header_summary: str | None = None
-    browser_state: dict | None = None
+    env_params: dict | None = None
 
     def to_history_text(self) -> str:
         """
@@ -129,13 +122,13 @@ class ToolExecutionRecord:
                 for step in self.response.meta["narrative"]:
                     error_details.append(f"  - {step}")
 
-            if self.browser_state:
-                error_details.append("Browser state at failure:")
-                error_details.append(
-                    f"  URL: {self.browser_state.get('url', 'N/A')}")
-                visible_text = self.browser_state.get('visible_text') or "N/A"
-                error_details.append(
-                    f"  Some visible content:\n{visible_text}")
+            if self.env_params is None:
+                return "\n\n".join(sections)
+
+            error_details.append("State at failure:")
+            for key, value in self.env_params.items():
+                if value is not None:
+                    error_details.append(f"  - {key}: {value}")
 
             if error_details:
                 sections.append("\n".join(error_details))

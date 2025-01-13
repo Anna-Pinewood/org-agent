@@ -178,6 +178,7 @@ class FillTool(BrowserTool):
     Parameters:
     selector: str - CSS selector of the input field
     value: str - Value to enter into the field
+    env=browser_env, environment to act it, already initialized in scope, leave as is if using a tool
     """
 
 
@@ -251,6 +252,7 @@ class CheckContentTool(BrowserTool):
         Parameters:
         texts: List[str] - List of text strings to look for in the page content
         """
+
 
 class NavigateTool(BrowserTool):
     """Tool for navigating to a URL"""

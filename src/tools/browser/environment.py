@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Dict, Optional, List
 import logging
 from datetime import datetime
@@ -22,7 +23,19 @@ class RequestResponsePair:
     timestamp: datetime = datetime.now()
 
 
-class BrowserEnvironment:
+class Environment(ABC):
+    @abstractmethod
+    def current_state_address(self) -> str:
+        """Get the current state address – url fow web, api endpoint for api, etc"""
+        pass
+
+    @abstractmethod
+    def describe_state(self) -> str:
+        """Get a concise description of the environment state"""
+        pass
+
+
+class BrowserEnvironment(Environment):
     """
     Manages browser state and provides controlled access to the browser.
     Acts as a singleton to maintain consistent state across the application.
@@ -59,6 +72,9 @@ class BrowserEnvironment:
             self._page.on("console", lambda msg: logger.debug(
                 "Browser console: %s", msg.text))
             self._setup_tracking()
+
+    def current_state_address(self):
+        return self.page.url if self._page else ""
 
     def _setup_tracking(self) -> None:
         """Set up event listeners for request/response tracking"""
