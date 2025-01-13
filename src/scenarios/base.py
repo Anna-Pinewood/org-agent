@@ -133,6 +133,7 @@ class StepStatus(Enum):
 
 class ScenarioStep:
     """Set of tools executed in a sequence to accomplish a scenario step"""
+
     def __init__(self):
         self.execution_history: list[ToolExecutionRecord] = []
         self.status = StepStatus.IN_PROGRESS
@@ -140,12 +141,12 @@ class ScenarioStep:
         self.success_criteria: list[dict] = []
 
     async def _record_tool_execution(
-        self,
-        tool_name: str,
-        params: dict,
-        response: ToolResponse,
-        browser_env: BrowserEnvironment,
-    ):
+            self,
+            tool_name: str,
+            params: dict,
+            response: ToolResponse,
+            browser_env: BrowserEnvironment,
+            header_summary: str | None = None) -> None:
         """Record tool execution and capture browser state if error occurred"""
         browser_state = None
         if not response.success:
@@ -160,9 +161,48 @@ class ScenarioStep:
             tool_name=tool_name,
             tool_params=params,
             response=response,
-            browser_state=browser_state
+            browser_state=browser_state,
+            header_summary=header_summary
         )
         self.execution_history.append(record)
+
+    def get_execution_history(self, include_successful: bool = True) -> str:
+        """
+            Generate a comprehensive history of all tool executions in this step.
+
+            Args:
+                include_successful: Whether to include successful executions in the output.
+                                Failed executions are always included.
+
+            Returns:
+                str: Formatted history text suitable for LLM analysis
+    """
+        if not self.execution_history:
+            return "No execution history available."
+
+        history_sections = []
+
+        # Add step metadata
+        history_sections.append(f"Step Status: {self.status.value}")
+        history_sections.append(
+            f"Total executions: {len(self.execution_history)}")
+
+        # Calculate success rate
+        successful = sum(1 for record in self.execution_history
+                         if record.response.success)
+        success_rate = (successful / len(self.execution_history)) * 100
+        history_sections.append(f"Success rate: {success_rate:.1f}%")
+
+        # Add individual execution records
+        history_sections.append("\nExecution Records:")
+        for idx, record in enumerate(self.execution_history, 1):
+            if record.response.success and not include_successful:
+                continue
+
+            history_sections.append(f"\n--- Sub-command #{idx} ---")
+            history_sections.append(record.to_history_text())
+
+        return "\n".join(history_sections)
 
     async def verify_success(self, **kwargs) -> bool:
         """Verify step completion based on success criteria"""

@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 class LoginStep(ScenarioStep):
     """Step for handling authentication to the booking system"""
+
     def __init__(self):
         super().__init__()
         self.status = StepStatus.NOT_STARTED
@@ -29,8 +30,8 @@ class LoginStep(ScenarioStep):
 
         try:
             # Navigate to login page
-            logger.info("Navigating to login page: %s",
-                        CONFIG.isu_booking_creds.booking_login)
+            msg = f"Navigating to login page: {CONFIG.isu_booking_creds.booking_login}"
+            logger.info(msg)
             nav_result = await NavigateTool().execute(
                 env=browser_env,
                 url=CONFIG.isu_booking_creds.booking_login
@@ -49,7 +50,8 @@ class LoginStep(ScenarioStep):
                     meta={"action": "navigate",
                           "url": CONFIG.isu_booking_creds.booking_login}
                 ),
-                browser_env=browser_env
+                browser_env=browser_env,
+                header_summary=msg
             )
 
             if not nav_check_result.success or not nav_result.success:
@@ -58,7 +60,8 @@ class LoginStep(ScenarioStep):
                 return False
 
             # Fill username
-            logger.info("Filling username field")
+            msg = "Filling username field"
+            logger.info(msg)
             username_result = await FillTool().execute(
                 env=browser_env,
                 selector="#username",
@@ -71,7 +74,8 @@ class LoginStep(ScenarioStep):
                     "value": "[REDACTED]"
                 },
                 response=username_result,
-                browser_env=browser_env
+                browser_env=browser_env,
+                header_summary=msg
             )
             if not username_result.success:
                 logger.error("Failed to fill username: %s",
@@ -79,11 +83,13 @@ class LoginStep(ScenarioStep):
                 return False
 
             # Fill password
-            logger.info("Filling password field")
+            msg = "Filling password field"
+            logger.info(msg)
             password_result = await FillTool().execute(
                 env=browser_env,
                 selector="#password",
-                value=CONFIG.isu_booking_creds.password
+                # value=CONFIG.isu_booking_creds.password
+                value="wrong"
             )
             await self._record_tool_execution(
                 tool_name="FillTool",
@@ -92,7 +98,8 @@ class LoginStep(ScenarioStep):
                     "value": "[REDACTED]"
                 },
                 response=password_result,
-                browser_env=browser_env
+                browser_env=browser_env,
+                header_summary=msg
             )
             if not password_result.success:
                 logger.error("Failed to fill password: %s",
@@ -100,7 +107,8 @@ class LoginStep(ScenarioStep):
                 return False
 
             # Click login button
-            logger.info("Clicking login button")
+            msg = "Clicking login button – logging in with filled values"
+            logger.info(msg)
             click_result = await ClickTool().execute(
                 env=browser_env,
                 text="Вход"
@@ -109,7 +117,8 @@ class LoginStep(ScenarioStep):
                 tool_name="ClickTool",
                 params={"text": "Вход"},
                 response=click_result,
-                browser_env=browser_env
+                browser_env=browser_env,
+                # header_summary=msg
             )
             if not click_result.success:
                 logger.error("Failed to click login button: %s",
@@ -134,11 +143,20 @@ class LoginStep(ScenarioStep):
         Returns:
             bool: True if login successful, False otherwise
         """
-        logger.info("Verifying login success")
+        msg = "Verifying login success"
+        logger.info(msg)
 
         verify_result = await CheckContentTool().execute(
             env=browser_env,
             texts=self._success_texts
+        )
+
+        await self._record_tool_execution(
+            tool_name="CheckContentTool",
+            params={"texts": self._success_texts},
+            response=verify_result,
+            browser_env=browser_env,
+            header_summary=msg
         )
 
         if verify_result.success:
