@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, model_validator
 from scenarios.base import BaseScenario, ScenarioStep
 import logging
 from config import CONFIG
+from src.message_broker import MessageBroker
 from src.scenarios.booking_steps import LoginStep
 from src.tools.browser.environment import BrowserEnvironment
 from tools.date import CurrentDateTool, next_thursday
@@ -77,8 +78,11 @@ Example output:
 class BookingScenario(BaseScenario):
     """Scenario for handling room booking requests with authentication support"""
 
-    def __init__(self, llm_brain: LLMInterface | None = None):
-        super().__init__(llm_brain)
+    def __init__(self,
+                 message_broker: MessageBroker | None = None,
+                 llm_brain: LLMInterface | None = None):
+        super().__init__(llm_brain=llm_brain,
+                         message_broker=message_broker)
         self.current_date = CurrentDateTool().execute()
         # Initialize steps
         self.steps = [
@@ -87,12 +91,6 @@ class BookingScenario(BaseScenario):
         # Initialize browser environment
         self.environment = BrowserEnvironment()
         self.analyze_error_prompt = ANALYZE_ERROR_PROMPT_BROWSER
-
-    async def _execute_step(self,
-                            step: ScenarioStep):
-        step_result = await step.execute(browser_env=self.environment)
-        # success = await step.verify_success(browser_env=self.environment)
-        return step_result
 
     async def execute(self, command: str) -> bool:
         """Execute the booking scenario"""
@@ -147,7 +145,3 @@ class BookingScenario(BaseScenario):
                         value in parsed.items() if value is not None}
 
         return BookingParams(**result_clean)
-
-    def _log_execution(self, command: str) -> None:
-        """Log the execution of the booking scenario"""
-        logger.info("Executing booking scenario with command: %s", command)

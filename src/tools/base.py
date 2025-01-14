@@ -108,7 +108,17 @@ class ToolExecutionRecord:
             if "narrative" in self.response.meta:
                 if self.response.meta["narrative"]:
                     meta_summary.append(
-                        f"Result: {self.response.meta['narrative'][-1]}")
+                        f"How it ended: {self.response.meta['narrative'][-1]}")
+            if "result" in self.response.meta:
+                meta_summary.append(f"Result: {self.response.meta['result']}")
+            # if other keys in meta, make logger warning
+
+            for key, value in self.response.meta.items():
+                if key not in ["url", "narrative"]:
+                    logger.debug(
+                        'The key "%s" won`t be included in the summary ("%s")',
+                        key,
+                        self.header_summary or "no header")
 
             if meta_summary:
                 sections.append("\n".join(meta_summary))

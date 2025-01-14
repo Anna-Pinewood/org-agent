@@ -59,18 +59,20 @@ class BrowserEnvironment(Environment):
     async def initialize(self):
         """Initialize browser environment if not already running"""
         if not self._browser:
-            logger.info("Starting new browser environment")
+            logger.debug("Starting new browser environment")
             playwright = await async_playwright().start()
             self._browser = await playwright.chromium.launch(
                 headless=True,
                 args=['--no-sandbox', '--disable-setuid-sandbox']
             )
+            logger.debug("Browser getting page and context...")
             self._context = await self._browser.new_context()
             self._page = await self._context.new_page()
 
             # Set up logging and tracking
             self._page.on("console", lambda msg: logger.debug(
                 "Browser console: %s", msg.text))
+            logger.info("Browser environment initialized")
             self._setup_tracking()
 
     def current_state_address(self):

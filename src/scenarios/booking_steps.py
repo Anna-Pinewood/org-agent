@@ -4,6 +4,7 @@ from src.scenarios.base import ScenarioStep, StepStatus
 from src.tools.base import ToolResponse
 from src.tools.browser.click import CheckContentTool, ClickTool, FillTool, NavigateTool
 from src.tools.browser.environment import BrowserEnvironment
+from src.tools.call_human import CallHumanTool
 logger = logging.getLogger(__name__)
 
 
@@ -21,6 +22,7 @@ class LoginStep(ScenarioStep):
         self.toolbox.register_tool("CheckContentTool", CheckContentTool())
         self.toolbox.register_tool("FillTool", FillTool())
         self.toolbox.register_tool("ClickTool", ClickTool())
+        self.toolbox.register_tool("CallHumanTool", CallHumanTool())
 
     async def execute(self, browser_env: BrowserEnvironment) -> bool:
         """

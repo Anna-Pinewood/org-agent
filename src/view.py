@@ -85,17 +85,18 @@ class RichLogHandler(RichHandler):
         log_text = Text()
 
         # Add timestamp
-        log_text.append(f"{time_format}", style="timestamp")
-        log_text.append(" - ")
-
-        # Add logger name
-        log_text.append(f"{record.name}", style="logger_name")
-        log_text.append(" - ")
+        # log_text.append(f"{time_format}", style="timestamp")
+        # log_text.append(" - ")
 
         # Add log level with appropriate color
-        level_color = self.log_colors.get(record.levelname, "[white]")
-        log_text.append(f"{record.levelname}", style=level_color)
-        log_text.append(" - ")
+        # level_color = self.log_colors.get(record.levelname, "[white]")
+        level_style = f"level.{record.levelname.lower()}"
+        log_text.append(f"[{record.levelname}]", style=level_style)
+        log_text.append(" ")
+
+        # Add logger name
+        log_text.append(f"{record.name}: ", style="logger_name")
+        log_text.append(" ")
 
         # Add the actual message
         # Add the message - either as a renderable or from the record
@@ -127,10 +128,12 @@ class CLIView:
         """Configure logging with Rich handler and custom formatting."""
         # Create our custom Rich handler
         rich_handler = RichLogHandler(console=self.console)
+        rich_handler.setLevel(logging.INFO)
 
         # Configure root logger
         root_logger = logging.getLogger()
-        root_logger.setLevel(logging.INFO)
+        root_logger.setLevel(logging.INFO)  # Ensure all logs are captured
+        # root_logger.setLevel(logging.INFO)
 
         # Remove existing handlers to avoid duplicate logs
         for handler in root_logger.handlers[:]:
@@ -138,6 +141,12 @@ class CLIView:
 
         # Add our custom handler
         root_logger.addHandler(rich_handler)
+
+        file_handler = logging.FileHandler('output.log')
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s\t[%(levelname)s] %(name)s: %(message)s', '%H:%M:%S'))
+        root_logger.addHandler(file_handler)
 
     # Rest of your existing CLIView methods remain the same
     def display_message(self, message: str):
@@ -192,3 +201,51 @@ class CLIView:
         self.console.print("\n")  # Add some spacing
         self.console.print(panel)
         self.console.print("\n")  # Add some spacing
+
+    def display_human_request(
+        self,
+        question: str,
+        options: list[str] | None = None
+    ) -> None:
+        """Display question that requires human input"""
+        # Stop progress spinner if it's running
+        self.stop_progress()
+
+        panel = Panel(
+            Text(f"❓ {question}", style="bright_cyan"),
+            title="[blue]Human Input Needed[/blue]",
+            border_style="blue",
+            box=box.HEAVY_HEAD
+        )
+        self.console.print("\n")
+        self.console.print(panel)
+
+        if options:
+            self.console.print("\nOptions:")
+            for i, opt in enumerate(options, 1):
+                self.console.print(f"{i}. {opt}")
+
+    def get_human_input(self, options: list[str] | None = None) -> str:
+        """Get human response with optional validation against options"""
+        # Ensure progress is stopped before getting input
+        self.stop_progress()
+
+        while True:
+            try:
+                response = self.get_input("[cyan]Enter your response[/cyan]")
+
+                if not options:
+                    return response
+
+                try:
+                    idx = int(response)
+                    if 1 <= idx <= len(options):
+                        return options[idx-1]
+                except ValueError:
+                    if response in options:
+                        return response
+
+                self.display_error("Please select a valid option")
+            except Exception as e:
+                logger.error("Error getting human input: %s", str(e))
+                self.display_error("Error reading input, please try again")

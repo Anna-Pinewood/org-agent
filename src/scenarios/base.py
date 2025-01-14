@@ -2,13 +2,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+import json
 import logging
 
 from llm_interface import LLMInterface
+from src.message_broker import MessageBroker
 from src.scenarios.prompts import ANALYZE_ERROR_PROMPT_BASE
 from src.tools.base import ToolBox, ToolExecutionRecord, ToolResponse
 from src.tools.browser.environment import Environment
 from pydantic import BaseModel
+
+from src.tools.call_human import CallHumanTool
 
 logger = logging.getLogger(__name__)
 
@@ -39,17 +43,18 @@ class ScenarioStep:
             tool_name: str,
             params: dict,
             response: ToolResponse,
-            environment: Environment,
+            environment: Environment | None = None,
             header_summary: str | None = None
     ) -> None:
         """Record tool execution and capture browser state if error occurred"""
         env_params = None
         if not response.success:
             # Get concise browser state description
-            env_params = {
-                "env_address": environment.current_state_address(),
-                "env_state": await environment.describe_state()
-            }
+            if environment:
+                env_params = {
+                    "env_address": environment.current_state_address(),
+                    "env_state": await environment.describe_state()
+                }
 
         record = ToolExecutionRecord(
             timestamp=datetime.now(),
@@ -100,8 +105,9 @@ class ScenarioStep:
         return "\n".join(history_sections)
 
     @abstractmethod
-    async def verify_success(self,
-                             environment: Environment | None = None) -> bool:
+    async def verify_success(
+            self,
+            environment: Environment | None = None) -> bool:
         """Verify step completion based on success criteria"""
         pass
 
@@ -142,16 +148,19 @@ class BaseScenario(ABC):
 
     def __init__(
             self,
-            llm_brain: LLMInterface | None = None):
-
+            message_broker: MessageBroker | None = None,
+            llm_brain: LLMInterface | None = None
+    ):
         if llm_brain is None:
             llm_brain = LLMInterface()
         self.llm_brain = llm_brain
+        # if we won't add HumanCallTool to the scenario, we're allowed not to pass message_broker
+        self.message_broker = message_broker
         self.context: ScenarioContext | None = None
         self.steps: list[ScenarioStep] = []
-        self.environment = None
+        self.environment: Environment | None = None
         # prompt with history and tool_descriptions variables
-        self.analyze_error_prompt = ANALYZE_ERROR_PROMPT_BASE
+        self.analyze_error_prompt: str = ANALYZE_ERROR_PROMPT_BASE
 
     def initialize_context(self, command: str, parsed_params: dict):
         self.context = ScenarioContext(
@@ -207,6 +216,10 @@ class BaseScenario(ABC):
             )
             history = current_step.get_execution_history(
                 include_successful=True)
+            # write execution history to file (add if exists)
+            with open("execution_history.txt", "a") as f:
+                f.write(history)
+                f.write("\n\n")
 
             try:
                 # Get LLM's analysis and next action
@@ -220,6 +233,8 @@ class BaseScenario(ABC):
                 )
 
                 analysis = self.llm_brain.get_response_content(response)
+                logger.info("LLM Response full:\n%s",
+                            json.dumps(analysis, indent=4, ensure_ascii=False))
                 logger.info("LLM analysis: %s", analysis["analysis"])
 
                 # Extract suggested action
@@ -234,7 +249,7 @@ class BaseScenario(ABC):
                 # Create frozen version of params for comparison
                 current_action = (
                     tool_name,
-                    frozenset(tool_params.items())
+                    _freeze_params(tool_params)
                 )
 
                 # Check if we're repeating the same action
@@ -259,7 +274,22 @@ class BaseScenario(ABC):
                 )
 
                 tool = current_step.toolbox.get_tool(tool_name)
-                if "environment" not in tool_params:
+
+                # Special handling for CallHumanTool
+                if isinstance(tool, CallHumanTool):
+                    result = await self._handle_human_interaction(
+                        current_step=current_step,
+                        params=tool_params
+                    )
+                    if result is None:
+                        return False
+                    total_retries += 1
+                    logger.info(
+                        "Human response received, continuing to the next LLM round immediately...\n\n")
+                    continue  # Get new LLM suggestion immediately
+
+                # Normal browser tool case
+                if "env" not in tool_params:
                     tool_params["env"] = self.environment
                 result = await tool.execute(**tool_params)
 
@@ -285,7 +315,8 @@ class BaseScenario(ABC):
             except Exception as e:
                 logger.error(
                     "Error during recovery attempt %d: %s",
-                    total_retries + 1, str(e)
+                    total_retries + 1, str(e),
+                    exc_info=True  # This includes the full traceback in the log
                 )
                 return False
 
@@ -294,6 +325,74 @@ class BaseScenario(ABC):
             self.MAX_TOTAL_RETRIES
         )
         return False
+
+    async def _handle_human_interaction(
+        self,
+        current_step: ScenarioStep,
+        params: dict
+    ) -> ToolResponse | None:
+        """
+        Handle interaction with human operator.
+
+        Args:
+            current_step: Current scenario step
+            params: Tool parameters from LLM including question to human
+
+        Returns:
+            Optional[ToolResponse]: Tool response if successful, None if failed
+        """
+        try:
+            # Record that we're asking human
+            await current_step._record_tool_execution(
+                tool_name="CallHumanTool",
+                params=params,
+                response=ToolResponse(
+                    success=True,
+                    meta={
+                        "action": "asking_human",
+                        "question": params.get("question_to_human")
+                    }
+                ),
+                environment=self.environment,
+                header_summary="Requesting human clarification"
+            )
+
+            # Execute human tool with configured message broker
+            call_human_tool = CallHumanTool()
+            result = await call_human_tool.execute(
+                broker=self.message_broker,
+                question_to_human=params["question_to_human"],
+                scenario_id=self.context.original_command,
+                timeout=300  # 5 minutes timeout
+            )
+
+            # Record human's response
+            await current_step._record_tool_execution(
+                tool_name="CallHumanTool",
+                params=params,
+                response=result,
+                environment=self.environment,
+                header_summary="Got human response"
+            )
+
+            if not result.success:
+                logger.error("Failed to get human response: %s",
+                             result.error if result.error else "Unknown error")
+                return None
+
+            # Pass the response back to the LLM for next action
+            return result
+
+        except Exception as e:
+            logger.error("Error during human interaction: %s",
+                         str(e), exc_info=True)
+            return None
+
+    async def _execute_step(self,
+                            step: ScenarioStep):
+        step_result = await step.execute(browser_env=self.environment)
+        # success = await step.verify_success(browser_env=self.environment)
+        return step_result
 
     async def execute(self, command: str) -> bool:
         """Main execution flow"""
@@ -365,3 +464,13 @@ class BaseScenario(ABC):
         logger.info(
             f"Executing {self.__class__.__name__} with command: {command}"
         )
+
+
+def _freeze_params(params: dict) -> tuple:
+    """Convert dictionary values into hashable types for comparison"""
+    frozen_items = []
+    for k, v in params.items():
+        if isinstance(v, list):
+            v = tuple(v)  # Convert list to tuple
+        frozen_items.append((k, v))
+    return tuple(frozen_items)

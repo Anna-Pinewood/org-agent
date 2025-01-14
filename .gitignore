@@ -18,3 +18,6 @@ notebooks/
 
 # docs
 docs/dev_knowledge/*
+
+# logs
+*.log
