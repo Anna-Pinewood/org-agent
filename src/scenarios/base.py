@@ -144,7 +144,7 @@ class ScenarioContext:
 class BaseScenario(ABC):
     """Base class for all scenarios"""
     MAX_CONSECUTIVE_RETRIES = 3  # Max times to retry same action with LLM
-    MAX_TOTAL_RETRIES = 6  # Max total retries per step with LLM
+    MAX_TOTAL_RETRIES = 12  # Max total retries per step with LLM
 
     def __init__(
             self,
@@ -455,7 +455,9 @@ class BaseScenario(ABC):
             return True
 
         except Exception as e:
-            logger.error("Scenario execution failed: %s", str(e))
+            logger.error("Scenario execution failed: %s",
+                         str(e),
+                         exc_info=True)
             self.context.status = ScenarioStatus.FAILED
             return False
 
