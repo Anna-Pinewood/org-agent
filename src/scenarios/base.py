@@ -211,7 +211,8 @@ class BaseScenario(ABC):
 
         while total_retries < self.MAX_TOTAL_RETRIES:
             logger.info(
-                "\n======\nRecovery attempt %d/%d",
+                "\n%s\nRecovery attempt %d/%d",
+                "="*50,
                 total_retries + 1, self.MAX_TOTAL_RETRIES
             )
             history = current_step.get_execution_history(
@@ -390,6 +391,7 @@ class BaseScenario(ABC):
 
     async def _execute_step(self,
                             step: ScenarioStep):
+        logger.info("\n%s\nExecuting step %s", "*"*50, step.__class__.__name__)
         step_result = await step.execute(browser_env=self.environment)
         # success = await step.verify_success(browser_env=self.environment)
         return step_result

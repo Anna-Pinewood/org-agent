@@ -1,5 +1,5 @@
 import pytest
-from src.scenarios.booking import BookingScenario
+from src.scenarios.booking.booking import BookingScenario
 from src.planner import ProxyPlanner
 
 

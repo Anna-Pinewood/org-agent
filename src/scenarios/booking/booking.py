@@ -4,7 +4,8 @@ from scenarios.base import BaseScenario, ScenarioStep
 import logging
 from config import CONFIG
 from src.message_broker import MessageBroker
-from src.scenarios.booking_steps import LoginStep
+from src.scenarios.booking.login_step import LoginStep
+from src.scenarios.booking.navigate_step import NavigateToBookingStep
 from src.tools.browser.environment import BrowserEnvironment
 from tools.date import CurrentDateTool, next_thursday
 from llm_interface import LLMInterface
@@ -86,7 +87,8 @@ class BookingScenario(BaseScenario):
         self.current_date = CurrentDateTool().execute()
         # Initialize steps
         self.steps = [
-            LoginStep()
+            LoginStep(),
+            NavigateToBookingStep()
         ]
         # Initialize browser environment
         self.environment = BrowserEnvironment()

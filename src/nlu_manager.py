@@ -2,7 +2,7 @@ import logging
 import asyncio
 from typing import Optional
 from planner import ProxyPlanner
-from scenarios.booking import BookingScenario
+from src.scenarios.booking.booking import BookingScenario
 from src.message_broker import MessageBroker
 from view import CLIView
 from config import CONFIG
