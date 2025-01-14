@@ -52,9 +52,9 @@ class LLMInterface:
             api_base=self.llm_base_url,
             **kwargs
         )
-        logger.info(
-            "Got response for call_params %s (300 symbols):\n %s...",
-            str(call_params), response['choices'][0]['message']['content'][:300])
+        # logger.info(
+        #     "Got response for call_params %s (300 symbols):\n %s...",
+        #     str(call_params), response['choices'][0]['message']['content'][:300])
         logger.info("Total cost %s",  litellm.completion_cost(response))
         return response
 

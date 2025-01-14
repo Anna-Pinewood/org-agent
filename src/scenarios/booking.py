@@ -9,6 +9,8 @@ from tools.date import CurrentDateTool, next_thursday
 from llm_interface import LLMInterface
 from pydantic.functional_validators import BeforeValidator
 from typing import Annotated
+from src.scenarios.prompts import ANALYZE_ERROR_PROMPT_BROWSER
+
 logger = logging.getLogger(__name__)
 
 default_booking_params = CONFIG.default_booking_params
@@ -84,6 +86,7 @@ class BookingScenario(BaseScenario):
         ]
         # Initialize browser environment
         self.environment = BrowserEnvironment()
+        self.analyze_error_prompt = ANALYZE_ERROR_PROMPT_BROWSER
 
     async def _execute_step(self,
                             step: ScenarioStep):

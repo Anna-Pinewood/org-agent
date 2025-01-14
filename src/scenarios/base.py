@@ -5,7 +5,7 @@ from enum import Enum
 import logging
 
 from llm_interface import LLMInterface
-from src.scenarios.prompts import ANALYZE_ERROR_PROMPT
+from src.scenarios.prompts import ANALYZE_ERROR_PROMPT_BASE
 from src.tools.base import ToolBox, ToolExecutionRecord, ToolResponse
 from src.tools.browser.environment import Environment
 from pydantic import BaseModel
@@ -137,6 +137,8 @@ class ScenarioContext:
 
 class BaseScenario(ABC):
     """Base class for all scenarios"""
+    MAX_CONSECUTIVE_RETRIES = 3  # Max times to retry same action with LLM
+    MAX_TOTAL_RETRIES = 6  # Max total retries per step with LLM
 
     def __init__(
             self,
@@ -148,6 +150,8 @@ class BaseScenario(ABC):
         self.context: ScenarioContext | None = None
         self.steps: list[ScenarioStep] = []
         self.environment = None
+        # prompt with history and tool_descriptions variables
+        self.analyze_error_prompt = ANALYZE_ERROR_PROMPT_BASE
 
     def initialize_context(self, command: str, parsed_params: dict):
         self.context = ScenarioContext(
@@ -171,75 +175,125 @@ class BaseScenario(ABC):
         """Parse natural language command into structured parameters"""
         pass
 
-    async def _handle_step_failure(self,
-                                   current_step: ScenarioStep,
-                                   ) -> bool:
+    async def _handle_step_failure(self, current_step: ScenarioStep) -> bool:
         """
-        Handle step failure by analyzing execution history and attempting recovery
+        Handle step failure by iteratively trying LLM-suggested recovery actions
+        until success or stopping conditions met.
+
+        Stopping conditions:
+        - Same tool+params executed consecutively MAX_CONSECUTIVE_RETRIES times
+        - Total retry attempts exceed MAX_TOTAL_RETRIES
+        - Success criteria met
 
         Args:
             current_step: The failed step instance
-            environment: environment to run it
 
         Returns:
             bool: True if recovery successful, False otherwise
         """
-        logger.info("Handling failure for step %d",
+        logger.info("\nHandling failure for step %d",
                     self.context.current_step_index)
 
-        # Get execution history for LLM analysis
-        history = current_step.get_execution_history(include_successful=True)
+        total_retries = 0
+        consecutive_same_actions = 1
+        last_action = None  # Tuple of (tool_name, frozen_params)
 
-        # Get available tools for recovery
         tool_descriptions = current_step.toolbox.get_tools_description()
 
-        try:
-            # Get LLM's analysis and next action
-            response = self.llm_brain.send_request(
-                prompt=ANALYZE_ERROR_PROMPT,
-                call_params={
-                    "history": history,
-                    "tool_descriptions": tool_descriptions,
-                },
-                response_format={"type": "json_object"}
-            )
-
-            analysis = self.llm_brain.get_response_content(response)
-            logger.info("LLM analysis: %s", analysis["analysis"])
-
-            # Execute suggested tool
-            tool_name = analysis["next_action"]["tool_name"]
-            tool_params = analysis["next_action"]["params"]
-
-            if tool_name not in current_step.toolbox:
-                logger.error("LLM suggested unknown tool: %s", tool_name)
-                return False
-            if "environment" not in tool_params:
-                tool_params["env"] = self.environment
+        while total_retries < self.MAX_TOTAL_RETRIES:
             logger.info(
-                "Executing recovery action - tool: %s, params: %s",
-                tool_name, tool_params
+                "\n======\nRecovery attempt %d/%d",
+                total_retries + 1, self.MAX_TOTAL_RETRIES
             )
+            history = current_step.get_execution_history(
+                include_successful=True)
 
-            tool = current_step.toolbox.get_tool(tool_name)
-            result = await tool.execute(**tool_params)
+            try:
+                # Get LLM's analysis and next action
+                response = self.llm_brain.send_request(
+                    prompt=self.analyze_error_prompt,
+                    call_params={
+                        "history": history,
+                        "tool_descriptions": tool_descriptions,
+                    },
+                    response_format={"type": "json_object"}
+                )
 
-            # Record tool execution
-            await current_step._record_tool_execution(
-                tool_name=tool_name,
-                params=tool_params,
-                response=result,
-                environment=self.environment,
-                header_summary="Using tool chosen by LLM (recovery attempt)",
+                analysis = self.llm_brain.get_response_content(response)
+                logger.info("LLM analysis: %s", analysis["analysis"])
 
-            )
+                # Extract suggested action
+                tool_name = analysis["next_action"]["tool_name"]
+                tool_params = analysis["next_action"]["params"]
 
-            # Verify if step successful after recovery
-            return await current_step.verify_success(environment=self.environment)
+                # Check if tool exists
+                if tool_name not in current_step.toolbox:
+                    logger.error("LLM suggested unknown tool: %s", tool_name)
+                    return False
 
-        except Exception as e:
-            logger.error("Error during step recovery: %s", str(e))
-            return False
+                # Create frozen version of params for comparison
+                current_action = (
+                    tool_name,
+                    frozenset(tool_params.items())
+                )
+
+                # Check if we're repeating the same action
+                if current_action == last_action:
+                    consecutive_same_actions += 1
+                    if consecutive_same_actions >= self.MAX_CONSECUTIVE_RETRIES:
+                        logger.warning(
+                            "Stopping: Same action attempted %d times consecutively: %s %s",
+                            consecutive_same_actions, tool_name, tool_params
+                        )
+                        return False
+                else:
+                    consecutive_same_actions = 1
+
+                last_action = current_action
+
+                # Execute suggested tool
+                logger.info(
+                    "Executing recovery action %d/%d - tool: %s, params: %s",
+                    total_retries + 1, self.MAX_TOTAL_RETRIES,
+                    tool_name, tool_params
+                )
+
+                tool = current_step.toolbox.get_tool(tool_name)
+                if "environment" not in tool_params:
+                    tool_params["env"] = self.environment
+                result = await tool.execute(**tool_params)
+
+                # Record tool execution
+                await current_step._record_tool_execution(
+                    tool_name=tool_name,
+                    params=tool_params,
+                    response=result,
+                    environment=self.environment,
+                    header_summary=f"Recovery attempt {total_retries + 1}"
+                )
+
+                # Check if step successful after this action
+                if await current_step.verify_success(environment=self.environment):
+                    logger.info(
+                        "Recovery successful after %d attempts",
+                        total_retries + 1
+                    )
+                    return True
+
+                total_retries += 1
+
+            except Exception as e:
+                logger.error(
+                    "Error during recovery attempt %d: %s",
+                    total_retries + 1, str(e)
+                )
+                return False
+
+        logger.warning(
+            "Stopping: Maximum total retries (%d) exceeded",
+            self.MAX_TOTAL_RETRIES
+        )
+        return False
 
     async def execute(self, command: str) -> bool:
         """Main execution flow"""
@@ -258,7 +312,7 @@ class BaseScenario(ABC):
             while self.context.current_step_index < len(self.steps):
                 current_step = self.steps[self.context.current_step_index]
                 logger.info(
-                    "Executing step %d: %s",
+                    "\nExecuting step %d: %s",
                     self.context.current_step_index,
                     current_step.__class__.__name__
                 )
