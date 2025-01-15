@@ -8,7 +8,7 @@ import logging
 from llm_interface import LLMInterface
 from src.message_broker import MessageBroker
 from src.scenarios.prompts import ANALYZE_ERROR_PROMPT_BASE
-from src.tools.base import ToolBox, ToolExecutionRecord, ToolResponse
+from src.tools.base import EnvTool, ToolBox, ToolExecutionRecord, ToolResponse
 from src.tools.browser.environment import Environment
 from pydantic import BaseModel
 
@@ -112,7 +112,7 @@ class ScenarioStep:
         pass
 
     @abstractmethod
-    async def execute(self, **kwargs) -> bool:
+    async def execute(self, env=None, **kwargs) -> bool:
         """Execute the step"""
         pass
 
@@ -239,77 +239,89 @@ class BaseScenario(ABC):
                 logger.info("LLM analysis: %s", analysis["analysis"])
 
                 # Extract suggested action
-                tool_name = analysis["next_action"]["tool_name"]
-                tool_params = analysis["next_action"]["params"]
+                if not isinstance(analysis["next_action"], list):
+                    # wrap dict inside into a list
+                    analysis["next_action"] = [analysis["next_action"]]
+                for action in analysis["next_action"]:
 
-                # Check if tool exists
-                if tool_name not in current_step.toolbox:
-                    logger.error("LLM suggested unknown tool: %s", tool_name)
-                    return False
+                    tool_name = action["tool_name"]
+                    tool_params = action["params"]
 
-                # Create frozen version of params for comparison
-                current_action = (
-                    tool_name,
-                    _freeze_params(tool_params)
-                )
-
-                # Check if we're repeating the same action
-                if current_action == last_action:
-                    consecutive_same_actions += 1
-                    if consecutive_same_actions >= self.MAX_CONSECUTIVE_RETRIES:
-                        logger.warning(
-                            "Stopping: Same action attempted %d times consecutively: %s %s",
-                            consecutive_same_actions, tool_name, tool_params
-                        )
+                    # Check if tool exists
+                    if tool_name not in current_step.toolbox:
+                        logger.error(
+                            "LLM suggested unknown tool: %s", tool_name)
                         return False
-                else:
-                    consecutive_same_actions = 1
 
-                last_action = current_action
-
-                # Execute suggested tool
-                logger.info(
-                    "Executing recovery action %d/%d - tool: %s, params: %s",
-                    total_retries + 1, self.MAX_TOTAL_RETRIES,
-                    tool_name, tool_params
-                )
-
-                tool = current_step.toolbox.get_tool(tool_name)
-
-                # Special handling for CallHumanTool
-                if isinstance(tool, CallHumanTool):
-                    result = await self._handle_human_interaction(
-                        current_step=current_step,
-                        params=tool_params
+                    # Create frozen version of params for comparison
+                    current_action = (
+                        tool_name,
+                        _freeze_params(tool_params)
                     )
-                    if result is None:
-                        return False
-                    total_retries += 1
+
+                    # Check if we're repeating the same action
+                    if current_action == last_action:
+                        consecutive_same_actions += 1
+                        if consecutive_same_actions >= self.MAX_CONSECUTIVE_RETRIES:
+                            logger.warning(
+                                "Stopping: Same action attempted %d times consecutively: %s %s",
+                                consecutive_same_actions, tool_name, tool_params
+                            )
+                            return False
+                    else:
+                        consecutive_same_actions = 1
+
+                    last_action = current_action
+
+                    # Execute suggested tool
                     logger.info(
-                        "Human response received, continuing to the next LLM round immediately...\n\n")
-                    continue  # Get new LLM suggestion immediately
+                        "Executing recovery action %d/%d - tool: %s, params: %s",
+                        total_retries + 1, self.MAX_TOTAL_RETRIES,
+                        tool_name, tool_params
+                    )
 
-                # Normal browser tool case
-                if "env" not in tool_params:
-                    tool_params["env"] = self.environment
-                result = await tool.execute(**tool_params)
+                    tool = current_step.toolbox.get_tool(tool_name)
 
-                # Record tool execution
-                await current_step._record_tool_execution(
-                    tool_name=tool_name,
-                    params=tool_params,
-                    response=result,
-                    environment=self.environment,
-                    header_summary=f"Recovery attempt {total_retries + 1}"
-                )
+                    # Special handling for CallHumanTool
+                    if isinstance(tool, CallHumanTool):
+                        result = await self._handle_human_interaction(
+                            current_step=current_step,
+                            params=tool_params
+                        )
+                        if result is None:
+                            return False
+                        total_retries += 1
+                        logger.info(
+                            "Human response received, continuing to the next LLM round immediately...\n\n")
+                        continue  # Get new LLM suggestion immediately
+
+                    # Env tool case
+                    if "env" not in tool_params and isinstance(tool, EnvTool):
+                        tool_params["env"] = self.environment
+                    result = await tool.execute(**tool_params)
+
+                    # Record tool execution
+                    await current_step._record_tool_execution(
+                        tool_name=tool_name,
+                        params=tool_params,
+                        response=result,
+                        environment=self.environment,
+                        header_summary=f"Recovery attempt {total_retries + 1}"
+                    )
+                    if await current_step.verify_success(environment=self.environment):
+                        logger.info(
+                            "Recovery successful after %d attempts",
+                            total_retries + 1
+                        )
+                        return True
 
                 # Check if step successful after this action
-                if await current_step.verify_success(environment=self.environment):
-                    logger.info(
-                        "Recovery successful after %d attempts",
-                        total_retries + 1
-                    )
-                    return True
+                # if await current_step.verify_success(environment=self.environment):
+                #     logger.info(
+                #         "Recovery successful after %d attempts",
+                #         total_retries + 1
+                #     )
+                #     return True
 
                 total_retries += 1
 
@@ -317,7 +329,7 @@ class BaseScenario(ABC):
                 logger.error(
                     "Error during recovery attempt %d: %s",
                     total_retries + 1, str(e),
-                    exc_info=True  # This includes the full traceback in the log
+                    # exc_info=True  # This includes the full traceback in the log
                 )
                 return False
 
@@ -392,7 +404,8 @@ class BaseScenario(ABC):
     async def _execute_step(self,
                             step: ScenarioStep):
         logger.info("\n%s\nExecuting step %s", "*"*50, step.__class__.__name__)
-        step_result = await step.execute(browser_env=self.environment)
+
+        step_result = await step.execute(env=self.environment)
         # success = await step.verify_success(browser_env=self.environment)
         return step_result
 
@@ -425,8 +438,6 @@ class BaseScenario(ABC):
                     # Step failed, need clarification
                     self.context.status = ScenarioStatus.WAITING_FOR_CLARIFICATION
 
-                    # Here we'll later implement:
-                    # 1. LLM analysis of failure
                     # Attempt recovery
                     recovery_success = await self._handle_step_failure(current_step)
                     if not recovery_success:
@@ -440,14 +451,7 @@ class BaseScenario(ABC):
                         "Recovery successful for step %d",
                         self.context.current_step_index
                     )
-                    # 2. User interaction
-                    # 3. Execution of corrective actions
-                    # For now just fail
-                    logger.error(
-                        "Step %d failed, scenario needs clarification",
-                        self.context.current_step_index
-                    )
-                    return False
+                    return True
 
                 # Step succeeded, move to next
                 self.context.current_step_index += 1

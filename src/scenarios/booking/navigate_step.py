@@ -28,7 +28,7 @@ class NavigateToBookingStep(ScenarioStep):
         self.toolbox.register_tool("ClickTool", ClickTool())
         self.toolbox.register_tool("CheckContentTool", CheckContentTool())
 
-    async def execute(self, browser_env: BrowserEnvironment) -> bool:
+    async def execute(self, env: BrowserEnvironment) -> bool:
         """
         Execute navigation sequence to booking page
 
@@ -46,14 +46,14 @@ class NavigateToBookingStep(ScenarioStep):
             msg = f"Navigating to booking page: {CONFIG.isu_booking_creds.booking_url}"
             logger.info(msg)
             nav_result = await NavigateTool().execute(
-                env=browser_env,
+                env=env,
                 url=CONFIG.isu_booking_creds.booking_url
             )
             await self._record_tool_execution(
                 tool_name="NavigateTool",
                 params={"url": CONFIG.isu_booking_creds.booking_url},
                 response=nav_result,
-                environment=browser_env,
+                environment=env,
                 header_summary=msg
             )
 
@@ -66,14 +66,14 @@ class NavigateToBookingStep(ScenarioStep):
             msg = "Clicking 'Create booking' button"
             logger.info(msg)
             click_result = await ClickTool().execute(
-                env=browser_env,
+                env=env,
                 text="Создать заявку"
             )
             await self._record_tool_execution(
                 tool_name="ClickTool",
                 params={"text": "Создать заявку"},
                 response=click_result,
-                environment=browser_env,
+                environment=env,
                 header_summary=msg
             )
 
@@ -83,7 +83,7 @@ class NavigateToBookingStep(ScenarioStep):
                 return False
 
             # Verify successful navigation
-            return await self.verify_success(environment=browser_env)
+            return await self.verify_success(environment=env)
 
         except Exception as e:
             logger.error(

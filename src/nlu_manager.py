@@ -119,7 +119,8 @@ class NLUManager:
                     logger.info("Received shutdown signal")
                     break
                 except Exception as e:
-                    logger.error("Unexpected error in main loop: %s", str(e))
+                    logger.error("Unexpected error in main loop: %s", str(e),
+                                 exc_info=True)
                     self.view.display_error("An unexpected error occurred")
 
         finally:

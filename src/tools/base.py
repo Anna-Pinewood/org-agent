@@ -6,6 +6,8 @@ from typing import Any, Dict
 
 from pydantic import BaseModel, Field
 
+from src.tools.browser.environment import Environment
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,6 +19,11 @@ class Tool(ABC):
     @property
     @abstractmethod
     def description(self) -> str:
+        pass
+
+class EnvTool(Tool):
+    @abstractmethod
+    def execute(self, env: Environment, **kwargs) -> Any:
         pass
 
 

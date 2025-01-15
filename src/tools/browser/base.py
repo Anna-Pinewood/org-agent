@@ -1,13 +1,13 @@
 
 from abc import ABC, abstractmethod
 from typing import TypedDict, Optional
-from src.tools.base import Tool
+from src.tools.base import EnvTool
 from src.tools.base import ToolResponse
 from src.tools.browser.environment import BrowserEnvironment
 from typing import Optional
 
 
-class BrowserTool(Tool):
+class BrowserTool(EnvTool):
     """
     Base class for atomic browser operations.
     Tools don't store state - they receive environment and perform actions.

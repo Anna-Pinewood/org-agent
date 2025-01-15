@@ -24,7 +24,7 @@ class LoginStep(ScenarioStep):
         self.toolbox.register_tool("ClickTool", ClickTool())
         self.toolbox.register_tool("CallHumanTool", CallHumanTool())
 
-    async def execute(self, browser_env: BrowserEnvironment) -> bool:
+    async def execute(self, env: BrowserEnvironment) -> bool:
         """
         Execute login sequence with full logging and history tracking
 
@@ -42,12 +42,12 @@ class LoginStep(ScenarioStep):
             msg = f"Navigating to login page: {CONFIG.isu_booking_creds.booking_login}"
             logger.info(msg)
             nav_result = await NavigateTool().execute(
-                env=browser_env,
+                env=env,
                 url=CONFIG.isu_booking_creds.booking_login
             )
 
             nav_check_result = await CheckContentTool().execute(
-                env=browser_env,
+                env=env,
                 texts=["Имя пользователя или E-mail"]
             )
 
@@ -59,7 +59,7 @@ class LoginStep(ScenarioStep):
                     meta={"action": "navigate",
                           "url": CONFIG.isu_booking_creds.booking_login}
                 ),
-                environment=browser_env,
+                environment=env,
                 header_summary=msg
             )
 
@@ -72,7 +72,7 @@ class LoginStep(ScenarioStep):
             msg = "Filling username field"
             logger.info(msg)
             username_result = await FillTool().execute(
-                env=browser_env,
+                env=env,
                 selector="#username",
                 value=CONFIG.isu_booking_creds.username
             )
@@ -83,7 +83,7 @@ class LoginStep(ScenarioStep):
                     "value": "[REDACTED]"
                 },
                 response=username_result,
-                environment=browser_env,
+                environment=env,
                 header_summary=msg
             )
             if not username_result.success:
@@ -95,7 +95,7 @@ class LoginStep(ScenarioStep):
             msg = "Filling password field"
             logger.info(msg)
             password_result = await FillTool().execute(
-                env=browser_env,
+                env=env,
                 selector="#password",
                 value=CONFIG.isu_booking_creds.password
             )
@@ -106,7 +106,7 @@ class LoginStep(ScenarioStep):
                     "value": "[REDACTED]"
                 },
                 response=password_result,
-                environment=browser_env,
+                environment=env,
                 header_summary=msg
             )
             if not password_result.success:
@@ -118,14 +118,14 @@ class LoginStep(ScenarioStep):
             msg = "Clicking login button – logging in with filled values"
             logger.info(msg)
             click_result = await ClickTool().execute(
-                env=browser_env,
+                env=env,
                 text="Вход"
             )
             await self._record_tool_execution(
                 tool_name="ClickTool",
                 params={"text": "Вход"},
                 response=click_result,
-                environment=browser_env,
+                environment=env,
                 # header_summary=msg
             )
             if not click_result.success:
@@ -134,7 +134,7 @@ class LoginStep(ScenarioStep):
                 return False
 
             # Verify successful login
-            return await self.verify_success(environment=browser_env)
+            return await self.verify_success(environment=env)
 
         except Exception as e:
             logger.error("Login step failed with unexpected error: %s", str(e))

@@ -108,7 +108,7 @@ class RichLogHandler(RichHandler):
         # Add traceback if present
         if traceback:
             log_text.append("\n")
-            log_text.append(traceback)
+            log_text.append(str(traceback))
 
         return log_text
 
