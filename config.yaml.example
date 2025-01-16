@@ -1,9 +1,29 @@
-redis:
+redis: # local redis configuration
   host: localhost
   port: 6379
   db: 0
 
 llm:
-  runpod:
-    base_url: "https://api.runpod.ai/v2/id_endpoint"
-    api_key: "rpa_your_key"
+  model_name: "mistral/mistral-large-latest"
+  api_key: "your_api_key_here"
+  base_url: null
+  # Example for RunPod configuration:
+  # model_name: "llm"
+  # base_url: "https://api.runpod.ai/v2/your_endpoint_id"
+  # api_key: "your_runpod_api_key"
+
+default_booking_params:
+  start_time: "19:00"
+  event_name: "Example Event Name"
+  end_time: "22:50"
+  building: "Аудиторный фонд ИТМО (Кронверкский 49)"
+  preferred_rooms: ["1404", "1405", "1410", "2407", "2426", "2430"]
+  phone: "+7 (000) 0000000"
+
+isu_booking_creds:
+  username: "example_username"
+  password: "example_password"
+  booking_url: "https://isu.ifmo.ru/pls/apex/f?p=2431:1:102628015887802"
+  creating_application_url: "https://isu.ifmo.ru/pls/apex/f?p=2431:4:112030779307075::NO:4:P4_MIN_DATE,P4_BACK_PAGE:,"
+  booking_login: "https://id.itmo.ru/auth/realms/itmo/protocol/openid-connect/auth?response_type=code&scope=openid&client_id=isu&redirect_uri=https://isu.ifmo.ru/api/sso/v1/public/login?apex_params=p=2143:LOGIN:112820233588688"
+  page_interaction_timeout: 30000

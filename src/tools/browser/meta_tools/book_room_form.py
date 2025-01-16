@@ -8,7 +8,7 @@ from src.tools.base import EnvTool, Tool, ToolResponse
 from src.tools.browser.click import ClickTool, CheckContentTool, NavigateTool
 from src.tools.browser.dropdown import DropdownOptionsTool, DropDownTool
 from src.tools.browser.environment import BrowserEnvironment
-from src.tools.booking_utils import (
+from src.tools.browser.booking_utils import (
     GetAvailableRoomsTool,
     GetTimeIntervalsTool,
     GetRoomIdTool,
