@@ -60,10 +60,10 @@ The agent handles the entire workflow - from login to form submission, with huma
 └── uv.lock                  # Dependency lock file
 ```
 ## Scheme
-![image](images_readme/scheme_agent.png)
+![image](images_readme/scheme_agent.jpg)
 
 ## View
-![image](images_readme/cli_view.png)
+![image](images_readme/cli_view.jpg)
 
 ## Basic booking flow
 1. You ask the assistant to book a room "забронируй аудиторию 3 аудитории, 2403, 2407 и ещё какую-нибудь, на следующий четверг пожалуйста, с 18 до 22:30, "
