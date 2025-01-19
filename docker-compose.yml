@@ -14,5 +14,18 @@ services:
       timeout: 3s
       retries: 5
 
+  chroma:
+    image: chromadb/chroma:0.6.3
+    ports:
+      - "${CHROMA_PORT}:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma_data
+      - ANONYMIZED_TELEMETRY=FALSE
+    volumes:
+      - ./chroma_data:/chroma_data
+    env_file:
+      - .env
+      
 volumes:
   redis_data:

@@ -1,4 +1,3 @@
-from chromadb.config import ChromaClientSettings
 from chromadb import HttpClient
 from typing import Any, List, Literal
 from abc import ABC, abstractmethod
@@ -41,10 +40,10 @@ class MemorySystem:
             self.client = HttpClient(
                 host=chroma_host,
                 port=chroma_port,
-                settings=ChromaClientSettings(
-                    chroma_server_host=chroma_host,
-                    chroma_server_http_port=chroma_port
-                )
+                # settings=ChromaClientSettings(
+                #     chroma_server_host=chroma_host,
+                #     chroma_server_http_port=chroma_port
+                # )
             )
 
             # Test connection
