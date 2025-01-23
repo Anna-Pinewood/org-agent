@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 CollectionType = Literal["preferences", "solutions"]
 
+SIM_THRESHOLD = 0.7
+
 
 class MemorySystem:
     """Memory system using ChromaDB for storing and retrieving agent memories."""
@@ -77,35 +79,57 @@ class MemorySystem:
             logger.error("Failed to initialize memory system: %s", str(e))
             raise
 
-    async def store(self,
-                    item: UserPreference | ProblemSolution) -> bool:
-        """
-        Store item in appropriate collection.
-
-        Args:
-            item: UserPreference or ProblemSolution to store
-
-        Returns:
-            bool: True if storage successful, False otherwise
-        """
+    async def store(
+            self, item: UserPreference | ProblemSolution) -> bool:
+        """Store item in appropriate collection with duplicate checking"""
         try:
-            # Prepare document
-            content = f"{item.header}: {item.text}"
-            doc = Document(page_content=content, metadata=item.model_dump())
-
-            # Store in appropriate collection
+            # Prepare search context based on item type
             if isinstance(item, UserPreference):
-                self.preferences_store.add_documents([doc])
+                # For preferences, search using header and text
+                search_context = f"{item.header} {item.text}"
                 collection = "preferences"
             else:
-                self.solutions_store.add_documents([doc])
+                # For solutions, search using problem type and error
+                search_context = f"{item.problem_type} {item.originar_error_msg}"
                 collection = "solutions"
 
-            logger.info(
-                "Successfully stored %s in %s collection",
-                item.__class__.__name__, collection
+            # Check for existing similar items
+            existing_items = await self.retrieve(
+                context=search_context,
+                collection=collection,
+                limit=1  # Only need to check if any exist
             )
-            return True
+
+            if not existing_items:
+                # No similar items found, store new one
+                if isinstance(item, UserPreference):
+                    self.preferences_store.add_documents([Document(
+                        page_content=f"{item.header}: {item.text}",
+                        metadata=item.model_dump()
+                    )])
+                else:
+                    self.solutions_store.add_documents([Document(
+                        page_content=f"{item.problem}: {item.originar_error_msg}",
+                        metadata=item.model_dump()
+                    )])
+                logger.info(
+                    "Stored new %s in %s collection",
+                    item.__class__.__name__,
+                    collection
+                )
+                return True
+
+            if isinstance(item, UserPreference):
+                # For now, skip storing duplicate preferences
+                # TODO: Implement times_mentioned increment when field is added
+                logger.info(
+                    "Similar preference already exists, skipping storage")
+                return False
+            else:
+                # For solutions, skip if similar exists
+                logger.info(
+                    "Similar solution already exists, skipping storage")
+                return False
 
         except Exception as e:
             logger.error(
@@ -141,8 +165,12 @@ class MemorySystem:
                 item_class = ProblemSolution
 
             # Perform similarity search
-            docs = store.similarity_search(context, k=limit)
-            items = [item_class(**doc.metadata) for doc in docs]
+            docs_with_scores = store.similarity_search_with_score(
+                context, k=limit)
+            # Filter documents based on similarity threshold
+
+            items = [item_class(**doc.metadata) for doc,
+                     score in docs_with_scores if score <= SIM_THRESHOLD]
 
             logger.info(
                 "Retrieved %d items from %s collection for context: %s",

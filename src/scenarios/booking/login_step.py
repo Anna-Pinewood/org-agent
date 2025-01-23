@@ -5,6 +5,7 @@ from src.tools.base import ToolResponse
 from src.tools.browser.click import CheckContentTool, ClickTool, FillTool, NavigateTool
 from src.tools.browser.environment import BrowserEnvironment
 from src.tools.call_human import CallHumanTool
+from src.tools.call_memory import CallMemoryPrefTool
 logger = logging.getLogger(__name__)
 
 
@@ -23,7 +24,8 @@ class LoginStep(ScenarioStep):
         self.toolbox.register_tool("FillTool", FillTool())
         self.toolbox.register_tool("ClickTool", ClickTool())
         self.toolbox.register_tool("CallHumanTool", CallHumanTool())
-
+        self.toolbox.register_tool("CallMemoryPrefTool", CallMemoryPrefTool())
+        
     async def execute(self, env: BrowserEnvironment) -> bool:
         """
         Execute login sequence with full logging and history tracking

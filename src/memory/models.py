@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field
 
 
 class UserPreference(BaseModel):
-    origins: str = Field(description="Original message from which this fact was retrieved (or string like f'{llm question} {user's answer}' if CallHumanTool was triggered.)")
+    origins: str = Field(
+        description="Original message from which this fact was retrieved (or string like f'{llm question} {user's answer}' if CallHumanTool was triggered.)")
     header: str = Field(
         description="E.g., 'Room preference', 'Booking note', 'Post publication time' – briefly how can fact be described briedly")
     text: str = Field(
@@ -15,6 +16,10 @@ class UserPreference(BaseModel):
     timestamp: str = Field(description="When this preference was learned")
     scenario_id: str = Field(
         description="Which scenario surfaced this preference")
+
+    def get_llm_format(self) -> str:
+        """Format preference data for LLM analysis"""
+        return f"{self.header}\n{self.text}"
 
 
 class ProblemSolution(BaseModel):
@@ -30,3 +35,14 @@ class ProblemSolution(BaseModel):
     timestamp: datetime = Field(description="When this preference was learned")
     scenario_id: str = Field(
         description="Which scenario surfaced this preference")
+
+    @property
+    def text(self) -> str:
+        return f'{"\n".join(self.steps)}'
+
+    def get_llm_format(self) -> str:
+        """Format solution data for LLM analysis"""
+        return f"""Type: {self.problem_type}
+Error: {self.originar_error_msg}
+Problem: {self.problem}
+Key actions: {', '.join(self.key_actions)}"""

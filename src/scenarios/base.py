@@ -6,6 +6,8 @@ import json
 import logging
 
 from llm_interface import LLMInterface
+from src.memory.extractor import PreferenceExtractor, SolutionExtractor
+from src.memory.interface import MemorySystem
 from src.message_broker import MessageBroker
 from src.scenarios.prompts import ANALYZE_ERROR_PROMPT_BASE
 from src.tools.base import EnvTool, ToolBox, ToolExecutionRecord, ToolResponse
@@ -13,6 +15,7 @@ from src.tools.browser.environment import Environment
 from pydantic import BaseModel
 
 from src.tools.call_human import CallHumanTool
+from src.tools.call_memory import CallMemorySolutionsTool
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +157,7 @@ class BaseScenario(ABC):
         if llm_brain is None:
             llm_brain = LLMInterface()
         self.llm_brain = llm_brain
+        self.memory_system = MemorySystem()
         # if we won't add HumanCallTool to the scenario, we're allowed not to pass message_broker
         self.message_broker = message_broker
         self.context: ScenarioContext | None = None
@@ -161,6 +165,7 @@ class BaseScenario(ABC):
         self.environment: Environment | None = None
         # prompt with history and tool_descriptions variables
         self.analyze_error_prompt: str = ANALYZE_ERROR_PROMPT_BASE
+        self.solution_extractor = SolutionExtractor(self.llm_brain)
 
     def initialize_context(self, command: str, parsed_params: dict):
         self.context = ScenarioContext(
@@ -206,6 +211,29 @@ class BaseScenario(ABC):
         total_retries = 0
         consecutive_same_actions = 1
         last_action = None  # Tuple of (tool_name, frozen_params)
+        original_error_msg = current_step.execution_history[-1].response.error
+
+        solutions_result = await CallMemorySolutionsTool().execute(
+            memory_system=self.memory_system,
+            search_query=current_step.get_execution_history()
+        )
+        # Record memory lookup in execution history
+        if solutions_result.success and solutions_result.meta['result']:
+            # Use previous solutions first
+            logger.info("Found similar problems and solutions in memory")
+            response = solutions_result
+        else:
+            response = ToolResponse(
+                success=False,
+                error="No similar problems found in memory"
+            )
+        await current_step._record_tool_execution(
+            tool_name="CallMemorySolutionsTool",
+            params={
+                "search_query": f"{current_step.get_execution_history()[:50]}..."},
+            response=response,
+            header_summary="Checking memory for similar problems..."
+        )
 
         tool_descriptions = current_step.toolbox.get_tools_description()
 
@@ -313,6 +341,15 @@ class BaseScenario(ABC):
                             "Recovery successful after %d attempts",
                             total_retries + 1
                         )
+                        # Extract and store solution
+                        solution = await self.solution_extractor.extract(
+                            history=current_step.get_execution_history(),
+                            scenario_id=self.__class__.__name__,
+                            originar_error_msg=original_error_msg
+                        )
+                        if solution:
+                            await self.memory_system.store(solution)
+                            logger.info("Stored successful solution in memory")
                         return True
 
                 # Check if step successful after this action
@@ -393,6 +430,9 @@ class BaseScenario(ABC):
                              result.error if result.error else "Unknown error")
                 return None
 
+            # Extract preferences from human interaction
+            await self._extract_preferences(text=f"Question: {params['question_to_human']}\nAnswer: {result.meta['result']}")
+
             # Pass the response back to the LLM for next action
             return result
 
@@ -409,6 +449,18 @@ class BaseScenario(ABC):
         # success = await step.verify_success(browser_env=self.environment)
         return step_result
 
+    async def _extract_preferences(self, text: str):
+        # Extract preferences from initial command
+        preference_extractor = PreferenceExtractor(self.llm_brain)
+        preference = await preference_extractor.extract(
+            text=text,
+            scenario_id=self.__class__.__name__,
+        )
+        if preference:
+            logger.info(
+                "Extracted user preference from command: %s", preference.text)
+            await self.memory_system.store(preference)
+
     async def execute(self, command: str) -> bool:
         """Main execution flow"""
         logger.info("Starting scenario %s execution for command: %s",
@@ -420,6 +472,9 @@ class BaseScenario(ABC):
             command=command,
             parsed_params=parsed_params.model_dump())
         self.context.status = ScenarioStatus.IN_PROGRESS
+
+        logger.info("Extracting user preferences from command...")
+        await self._extract_preferences(text=command)
 
         try:
             # Execute steps sequentially

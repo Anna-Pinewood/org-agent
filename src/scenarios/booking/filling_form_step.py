@@ -9,6 +9,7 @@ from src.tools.browser.meta_tools.book_room_form import MetaBookingFormTool
 from src.tools.browser.meta_tools.fill_book_form import MetaFillBookingFormTool
 from src.tools.browser.environment import BrowserEnvironment
 from src.tools.call_human import CallHumanTool
+from src.tools.call_memory import CallMemoryPrefTool
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,8 @@ class RoomBookingStep(ScenarioStep):
             "MetaFillBookingFormTool", MetaFillBookingFormTool())
         self.toolbox.register_tool("CallHumanTool", CallHumanTool())
         self.toolbox.register_tool("CheckContentTool", CheckContentTool())
+        self.toolbox.register_tool("CallMemoryPrefTool", CallMemoryPrefTool())
+
 
     async def execute(self, env) -> bool:
         """Execute room booking sequence"""
