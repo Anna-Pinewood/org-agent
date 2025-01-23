@@ -21,3 +21,6 @@ docs/dev_knowledge/*
 
 # logs
 *.log
+
+# vectorstore
+chroma_data

@@ -9,6 +9,9 @@ class UserPreference(BaseModel):
         description="E.g., 'Room preference', 'Booking note', 'Post publication time' – briefly how can fact be described briedly")
     text: str = Field(
         description="Fact text e.g. 'Rooms 1404, 1405 are commonly booked together, since they are close to each other.'")
+    times_mentioned: int = Field(
+        description="How many times was this fact mentioned. For example how often did user booked certain room."
+    )
     timestamp: str = Field(description="When this preference was learned")
     scenario_id: str = Field(
         description="Which scenario surfaced this preference")
