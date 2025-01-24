@@ -9,14 +9,13 @@ EXTRACT_PREFERENCE_PROMPT = """Analyze the interaction context and extract user 
 
 Context:
 User command or dialog: {user_text}
-Scenario type: {scenario_type}
 
 If NO preferences are found, return null.
 If preferences ARE found, return them in the following JSON structure:
-{
+{{
     "header": "Brief category name - e.g. Room preference, Time preference, Booking workflow preference",
     "text": "Complete fact in natural language that captures the preference context",
-}
+}}
 
 Examples:
 
