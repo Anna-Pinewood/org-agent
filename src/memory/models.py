@@ -38,7 +38,7 @@ class ProblemSolution(BaseModel):
 
     @property
     def text(self) -> str:
-        return f'{"\n".join(self.steps)}'
+        return "\n".join(self.steps)
 
     def get_llm_format(self) -> str:
         """Format solution data for LLM analysis"""
