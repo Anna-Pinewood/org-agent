@@ -32,7 +32,7 @@ class ProblemSolution(BaseModel):
         description="Natural language problem description in one line. What happened? Room 1405 was already booked. Login wasn't successful.")
     key_actions: list[str] = Field(
         description="Only key actions to solve this problem (LLM rertieves them after problem solved)")
-    timestamp: datetime = Field(description="When this preference was learned")
+    timestamp: str = Field(description="When this preference was learned")
     scenario_id: str = Field(
         description="Which scenario surfaced this preference")
 

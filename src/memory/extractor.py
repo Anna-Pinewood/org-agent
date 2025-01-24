@@ -111,7 +111,7 @@ class PreferenceExtractor:
                 UserPreference(
                     **extracted_single,
                     origins=text,
-                    timestamp=datetime.now(),
+                    timestamp=str(datetime.now()),
                     scenario_id=scenario_id
                 ) for extracted_single in preferences
             ]
@@ -165,7 +165,7 @@ class SolutionExtractor:
                 **extracted,
                 originar_error_msg=originar_error_msg,
                 steps=history.split("\n"),
-                timestamp=datetime.now(),
+                timestamp=str(datetime.now()),
                 scenario_id=scenario_id
             )
 
