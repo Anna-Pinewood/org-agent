@@ -84,6 +84,14 @@ The agent handles the entire workflow - from login to form submission, with huma
 9. The user will help the agent and the agent will continue the execution, implementing the user's advice. We will save the solution in memory.
 10. When the scenario is finished, user can input new command or exit the program.
 
+## Technical Stack – Components
+- **Python 3.10+**: Main programming language
+- **LiteLLM**: Abstraction layer for working with various LLM providers (handles API calls and embeddings)
+- **Playwright**: Modern web automation and browser control
+- **Redis**: Message broker for async communication between components
+- **ChromaDB**: Vector database for semantic memory storage
+- **Langchain**: Integration with vector stores and embedding models
+
 ## How to run
 1. Run docker compose to init redis message broker
 2. Fill config.yaml with your data
