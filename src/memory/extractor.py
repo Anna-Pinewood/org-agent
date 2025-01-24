@@ -69,7 +69,7 @@ class PreferenceExtractor:
         self.llm = llm_interface
         self.extract_prompt = EXTRACT_PREFERENCE_PROMPT
 
-    async def extract(
+    def extract(
         self,
         text: str,
         scenario_id: str,
@@ -85,7 +85,7 @@ class PreferenceExtractor:
             UserPreference if preference found, None otherwise
         """
         try:
-            response = await self.llm.send_request(
+            response = self.llm.send_request(
                 prompt=self.extract_prompt,
                 call_params={
                     "user_text": text,
@@ -120,7 +120,7 @@ class SolutionExtractor:
         self.llm = llm_interface
         self.extract_prompt = EXTRACT_SOLUTION_PROMPT
 
-    async def extract(
+    def extract(
         self,
         history: str,
         originar_error_msg: str,
@@ -138,7 +138,7 @@ class SolutionExtractor:
             ProblemSolution if extraction successful, None otherwise
         """
         try:
-            response = await self.llm.send_request(
+            response = self.llm.send_request(
                 prompt=self.extract_prompt,
                 call_params={
                     "history": history,

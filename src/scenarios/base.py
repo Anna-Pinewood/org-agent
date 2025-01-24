@@ -342,7 +342,8 @@ class BaseScenario(ABC):
                             total_retries + 1
                         )
                         # Extract and store solution
-                        solution = await self.solution_extractor.extract(
+                        solution_extractor = SolutionExtractor(self.llm_brain)
+                        solution = solution_extractor.extract(
                             history=current_step.get_execution_history(),
                             scenario_id=self.__class__.__name__,
                             originar_error_msg=original_error_msg
@@ -452,7 +453,7 @@ class BaseScenario(ABC):
     async def _extract_preferences(self, text: str):
         # Extract preferences from initial command
         preference_extractor = PreferenceExtractor(self.llm_brain)
-        preference = await preference_extractor.extract(
+        preference = preference_extractor.extract(
             text=text,
             scenario_id=self.__class__.__name__,
         )
