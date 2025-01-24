@@ -66,7 +66,7 @@ The agent handles the entire workflow - from login to form submission, with huma
 └── uv.lock                  # Dependency lock file
 ```
 ## Scheme
-![image](images_readme/scheme_agent.jpg)
+![image](images_readme/scheme_agent.png)
 
 ## View
 ![image](images_readme/cli_view.jpg)
