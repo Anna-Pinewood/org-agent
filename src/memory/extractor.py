@@ -96,6 +96,15 @@ class PreferenceExtractor:
             extracted = self.llm.get_response_content(response)
             if not extracted:
                 return None
+            # Handle both single dict and list of dicts
+            preferences = []
+            if isinstance(extracted, dict):
+                preferences = [extracted]
+            elif isinstance(extracted, list):
+                preferences = extracted
+            else:
+                logger.error("Unexpected response format: %s", type(extracted))
+                return None
             logger.info("Extracted preferences:\n%s", extracted)
             # Convert to UserPreference model with additional metadata
             return [
@@ -104,7 +113,7 @@ class PreferenceExtractor:
                     origins=text,
                     timestamp=datetime.now(),
                     scenario_id=scenario_id
-                ) for extracted_single in extracted
+                ) for extracted_single in preferences
             ]
 
         except Exception as e:
