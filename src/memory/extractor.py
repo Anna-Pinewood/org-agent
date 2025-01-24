@@ -96,7 +96,7 @@ class PreferenceExtractor:
             extracted = self.llm.get_response_content(response)
             if not extracted:
                 return None
-
+            logger.info("Extracted preferences: %s", extracted)
             # Convert to UserPreference model with additional metadata
             return [
                 UserPreference(
