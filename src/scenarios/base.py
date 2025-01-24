@@ -453,14 +453,15 @@ class BaseScenario(ABC):
     async def _extract_preferences(self, text: str):
         # Extract preferences from initial command
         preference_extractor = PreferenceExtractor(self.llm_brain)
-        preference = preference_extractor.extract(
+        preferences = preference_extractor.extract(
             text=text,
             scenario_id=self.__class__.__name__,
         )
-        if preference:
+        if preferences:
             logger.info(
-                "Extracted user preference from command: %s", preference.text)
-            await self.memory_system.store(preference)
+                "Extracted user preferences from command: %s", str([preference.text for preference in preferences]))
+            for preference in preferences:
+                await self.memory_system.store(preference)
 
     async def execute(self, command: str) -> bool:
         """Main execution flow"""

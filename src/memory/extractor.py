@@ -73,7 +73,7 @@ class PreferenceExtractor:
         self,
         text: str,
         scenario_id: str,
-    ) -> UserPreference | None:
+    ) -> list[UserPreference] | None:
         """
         Extract preferences from text if they exist.
 
@@ -98,12 +98,14 @@ class PreferenceExtractor:
                 return None
 
             # Convert to UserPreference model with additional metadata
-            return UserPreference(
-                **extracted,
-                origins=text,
-                timestamp=datetime.now(),
-                scenario_id=scenario_id
-            )
+            return [
+                UserPreference(
+                    **extracted_single,
+                    origins=text,
+                    timestamp=datetime.now(),
+                    scenario_id=scenario_id
+                ) for extracted_single in extracted
+            ]
 
         except Exception as e:
             logger.error(
